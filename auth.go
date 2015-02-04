@@ -19,7 +19,7 @@ type PasswordAuth interface {
 }
 
 // The password read from the config field
-func NewStaticPassword(password []byte) PasswordAuth {
+func newStaticPassword(password []byte) PasswordAuth {
 	return &staticPassword{password}
 }
 
@@ -37,12 +37,12 @@ func (sp *staticPassword) Callback() passwordCallback {
 }
 
 // The password read from the file `f`
-func NewFilePassword(f string) (PasswordAuth, error) {
+func newFilePassword(f string) (PasswordAuth, error) {
 	password, err := ioutil.ReadFile(f)
 	if err != nil {
 		return nil, err
 	}
-	return NewStaticPassword(password), nil
+	return newStaticPassword(password), nil
 }
 
 type publicKeyCallback func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error)
@@ -57,7 +57,7 @@ type staticPublicKey struct {
 }
 
 // The public key read from the config field
-func NewStaticPublicKey(key []byte) (PublicKeyAuth, error) {
+func newStaticPublicKey(key []byte) (PublicKeyAuth, error) {
 	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(key)
 	if err != nil {
 		return nil, err
@@ -75,10 +75,10 @@ func (sp *staticPublicKey) Callback() publicKeyCallback {
 }
 
 // The public key read from the file `f`
-func NewFilePublicKey(f string) (PublicKeyAuth, error) {
+func newFilePublicKey(f string) (PublicKeyAuth, error) {
 	key, err := ioutil.ReadFile(f)
 	if err != nil {
 		return nil, err
 	}
-	return NewStaticPublicKey(key)
+	return newStaticPublicKey(key)
 }

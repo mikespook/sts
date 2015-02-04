@@ -61,26 +61,30 @@ Loop:
 		case AuthPassword:
 			switch {
 			case strings.HasPrefix(auth, AuthStatic):
-				config.auth.Password = NewStaticPassword([]byte(strings.TrimPrefix(auth, AuthStatic)))
+				config.auth.Password = newStaticPassword([]byte(strings.TrimPrefix(auth, AuthStatic)))
 			case strings.HasPrefix(auth, AuthFile):
-				if config.auth.Password, err = NewFilePassword(strings.TrimPrefix(auth, AuthFile)); err != nil {
+				if config.auth.Password, err = newFilePassword(strings.TrimPrefix(auth, AuthFile)); err != nil {
 					return
 				}
 			case strings.HasPrefix(auth, AuthRPC):
-				// TODO
+				if config.auth.Password, err = newRpcPasswordAuth(strings.TrimPrefix(auth, AuthRPC)); err != nil {
+					return
+				}
 			}
 		case AuthPubKey:
 			switch {
 			case strings.HasPrefix(auth, AuthStatic):
-				if config.auth.PublicKey, err = NewStaticPublicKey([]byte(strings.TrimPrefix(auth, AuthStatic))); err != nil {
+				if config.auth.PublicKey, err = newStaticPublicKey([]byte(strings.TrimPrefix(auth, AuthStatic))); err != nil {
 					return
 				}
 			case strings.HasPrefix(auth, AuthFile):
-				if config.auth.PublicKey, err = NewFilePublicKey(strings.TrimPrefix(auth, AuthFile)); err != nil {
+				if config.auth.PublicKey, err = newFilePublicKey(strings.TrimPrefix(auth, AuthFile)); err != nil {
 					return
 				}
 			case strings.HasPrefix(auth, AuthRPC):
-				// TODO
+				if config.auth.PublicKey, err = newRpcPublicKeyAuth(strings.TrimPrefix(auth, AuthRPC)); err != nil {
+					return
+				}
 			}
 		}
 	}
