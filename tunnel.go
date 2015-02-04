@@ -9,13 +9,13 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func New(config *Config) *Server {
-	return &Server{config: config}
+func New(cfg *config) *Server {
+	return &Server{config: cfg}
 }
 
 type Server struct {
 	sync.RWMutex
-	config   *Config
+	config   *config
 	listener net.Listener
 	status   *Status
 }

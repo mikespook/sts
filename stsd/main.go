@@ -25,8 +25,12 @@ func main() {
 		flag.PrintDefaults()
 		return
 	}
-	cfg, err := loadConfig(config)
+	cfg, err := sts.LoadConfig(config)
 	if err != nil {
+		log.Errorf("Start: %s", err)
+		return
+	}
+	if err := log.Init(cfg.Log.File, log.StrToLevel(cfg.Log.Level), 0); err != nil {
 		log.Errorf("Start: %s", err)
 		return
 	}
@@ -47,13 +51,4 @@ func main() {
 	})
 	signal.Wait()
 	log.Messagef("Stopped")
-}
-
-func loadConfig(f string) (cfg *sts.Config, err error) {
-	cfg, err = sts.LoadConfig(f)
-	if err != nil {
-		return
-	}
-	err = log.Init(cfg.Log.File, log.StrToLevel(cfg.Log.Level), 0)
-	return
 }
