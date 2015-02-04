@@ -124,19 +124,25 @@ func (session *Session) Close() error {
 }
 
 func doSession(conn net.Conn, config *ssh.ServerConfig) {
-	defer conn.Close()
+	defer func() {
+		conn.Close()
+		log.Messagef("Disconnect: %s", conn.RemoteAddr())
+	}()
+	log.Messagef("Connect: %s", conn.RemoteAddr())
 	session := &Session{}
 	var err error
 	if session.SshConn, session.ChannelChan, session.OOBReqChan,
 		err = ssh.NewServerConn(conn, config); err != nil {
-		log.Errorf("Connect: %s", err)
+		if err != io.EOF {
+			log.Errorf("SSH-Connect: %s", err)
+		}
 		return
 	}
-	log.Messagef("Connect: %s@%s (%s)", session.SshConn.User(),
+	log.Messagef("SSH-Connect: %s@%s (%s)", session.SshConn.User(),
 		session.SshConn.RemoteAddr(), session.SshConn.ClientVersion())
 	go session.OOBRequest()
 	session.Channels()
-	log.Messagef("Disconnect: %s@%s (%s)", session.SshConn.User(),
+	log.Messagef("SSH-Disconnect: %s@%s (%s)", session.SshConn.User(),
 		session.SshConn.RemoteAddr(), session.SshConn.ClientVersion())
 	return
 }

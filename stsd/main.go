@@ -30,8 +30,8 @@ func main() {
 		log.Errorf("Start: %s", err)
 		return
 	}
-	log.Messagef("Starting: pid=%d, addr=%s, keys=%+v",
-		os.Getpid(), cfg.Addr, cfg.Keys)
+	log.Messagef("Starting: pid=%d, addr=%s, keys=%+v, pwd=%s",
+		os.Getpid(), cfg.Addr, cfg.Keys, cfg.Pwd)
 	tunnel := sts.New(cfg)
 	go func() {
 		if err := tunnel.Serve(); err != nil {

@@ -17,14 +17,20 @@ type Server struct {
 	sync.RWMutex
 	config   *Config
 	listener net.Listener
+	status   *Status
 }
 
 func (srv *Server) sshConfig() (config *ssh.ServerConfig, err error) {
 	config = &ssh.ServerConfig{
-		NoClientAuth: false,
+		NoClientAuth: srv.config.auth.anonymous,
 	}
-	config.PasswordCallback = func(conn ssh.ConnMetadata, password []byte) (p *ssh.Permissions, err error) {
-		return nil, nil
+	if !srv.config.auth.anonymous {
+		if srv.config.auth.Password != nil {
+			config.PasswordCallback = srv.config.auth.Password.Callback()
+		}
+		if srv.config.auth.PublicKey != nil {
+			config.PublicKeyCallback = srv.config.auth.PublicKey.Callback()
+		}
 	}
 
 	for _, key := range srv.config.Keys {
