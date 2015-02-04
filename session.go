@@ -11,47 +11,47 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-type Session struct {
+type session struct {
 	SshConn     ssh.Conn
 	ChannelChan <-chan ssh.NewChannel
 	OOBReqChan  <-chan *ssh.Request
 }
 
-func (session *Session) OOBRequest() {
-	for req := range session.OOBReqChan {
+func (s *session) OOBRequest() {
+	for req := range s.OOBReqChan {
 		log.Messagef("OOB Request: %+v", req)
 	}
 }
 
-func (session *Session) Channels() {
-	for newChan := range session.ChannelChan {
+func (s *session) Channels() {
+	for newChan := range s.ChannelChan {
 		ch, reqCh, err := newChan.Accept()
 		if err != nil {
-			session.Errorf("Channel: %s", err)
+			s.Errorf("Channel: %s", err)
 			return
 		}
 		chType := newChan.ChannelType()
 		switch chType {
 		case "session":
-			go session.Session(newChan, ch, reqCh)
+			go s.Session(newChan, ch, reqCh)
 		case "direct-tcpip":
-			go session.DirectTcpIp(newChan, ch)
+			go s.DirectTcpIp(newChan, ch)
 		default:
 			msg := fmt.Sprintf("%s is not supported\n\r", chType)
 			if _, err := ch.Write([]byte(msg)); err != nil {
-				session.Errorf("Write: %s", err)
+				s.Errorf("Write: %s", err)
 				return
 			}
 		}
 	}
 }
 
-func (session *Session) status(ch io.Writer) {
+func (s *session) status(ch io.Writer) {
 	outputs := []string{
 		"\x1b[2J\x1b[1;1H",
-		fmt.Sprintf("Secure Tunnel Server (%s)\r\n", session.SshConn.ServerVersion()),
-		fmt.Sprintf("User: %s@%s\r\n", session.SshConn.User(),
-			session.SshConn.RemoteAddr()),
+		fmt.Sprintf("Secure Tunnel Server (%s)\r\n", s.SshConn.ServerVersion()),
+		fmt.Sprintf("User: %s@%s\r\n", s.SshConn.User(),
+			s.SshConn.RemoteAddr()),
 		"\n* Press any key to refresh status *\r\n* Press [Ctrl+C] to disconnect *\r\n",
 	}
 	for _, line := range outputs {
@@ -59,28 +59,28 @@ func (session *Session) status(ch io.Writer) {
 	}
 }
 
-func (session *Session) Session(newChan ssh.NewChannel,
+func (s *session) Session(newChan ssh.NewChannel,
 	ch ssh.Channel, reqChan <-chan *ssh.Request) {
 	defer ch.Close()
 	buf := make([]byte, 1)
 LOOP:
 	for {
-		session.status(ch)
+		s.status(ch)
 		if _, err := ch.Read(buf); err != nil {
-			session.Errorf("Read: %s", err)
+			s.Errorf("Read: %s", err)
 			return
 		}
 		switch buf[0] {
 		case 0x03:
-			session.Close()
+			s.Close()
 			break LOOP
 		default:
 		}
 	}
 }
 
-func (session *Session) Errorf(format string, err error) {
-	log.Errorf("%s [%s]", fmt.Sprintf(format, err), session.SshConn.User())
+func (s *session) Errorf(format string, err error) {
+	log.Errorf("%s [%s]", fmt.Sprintf(format, err), s.SshConn.User())
 }
 
 func parseAddr(data []byte) (addr string, err error) {
@@ -101,7 +101,7 @@ func parseAddr(data []byte) (addr string, err error) {
 	return
 }
 
-func (session *Session) DirectTcpIp(newChan ssh.NewChannel,
+func (s *session) DirectTcpIp(newChan ssh.NewChannel,
 	ch ssh.Channel) {
 	defer ch.Close()
 	addr, err := parseAddr(newChan.ExtraData())
@@ -119,8 +119,8 @@ func (session *Session) DirectTcpIp(newChan ssh.NewChannel,
 	io.Copy(ch, conn)
 }
 
-func (session *Session) Close() error {
-	return session.SshConn.Close()
+func (s *session) Close() error {
+	return s.SshConn.Close()
 }
 
 func doSession(conn net.Conn, config *ssh.ServerConfig) {
@@ -129,20 +129,20 @@ func doSession(conn net.Conn, config *ssh.ServerConfig) {
 		log.Messagef("Disconnect: %s", conn.RemoteAddr())
 	}()
 	log.Messagef("Connect: %s", conn.RemoteAddr())
-	session := &Session{}
+	s := &session{}
 	var err error
-	if session.SshConn, session.ChannelChan, session.OOBReqChan,
+	if s.SshConn, s.ChannelChan, s.OOBReqChan,
 		err = ssh.NewServerConn(conn, config); err != nil {
 		if err != io.EOF {
 			log.Errorf("SSH-Connect: %s", err)
 		}
 		return
 	}
-	log.Messagef("SSH-Connect: %s@%s (%s)", session.SshConn.User(),
-		session.SshConn.RemoteAddr(), session.SshConn.ClientVersion())
-	go session.OOBRequest()
-	session.Channels()
-	log.Messagef("SSH-Disconnect: %s@%s (%s)", session.SshConn.User(),
-		session.SshConn.RemoteAddr(), session.SshConn.ClientVersion())
+	log.Messagef("SSH-Connect: %s@%s (%s)", s.SshConn.User(),
+		s.SshConn.RemoteAddr(), s.SshConn.ClientVersion())
+	go s.OOBRequest()
+	s.Channels()
+	log.Messagef("SSH-Disconnect: %s@%s (%s)", s.SshConn.User(),
+		s.SshConn.RemoteAddr(), s.SshConn.ClientVersion())
 	return
 }

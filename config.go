@@ -18,7 +18,7 @@ const (
 	UnderstandRasks = "I Understand the Risks"
 )
 
-type Config struct {
+type config struct {
 	Pwd  string
 	Addr string
 	Keys []string
@@ -33,56 +33,56 @@ type Config struct {
 	}
 }
 
-func LoadConfig(filename string) (config *Config, err error) {
+func LoadConfig(filename string) (cfg *config, err error) {
 	var data []byte
 	if data, err = ioutil.ReadFile(filename); err != nil {
 		return
 	}
-	if err = yaml.Unmarshal(data, &config); err != nil {
+	if err = yaml.Unmarshal(data, &cfg); err != nil {
 		return
 	}
-	if err = os.Chdir(config.Pwd); err != nil {
+	if err = os.Chdir(cfg.Pwd); err != nil {
 		return
 	}
-	err = config.parseAuth()
+	err = cfg.parseAuth()
 	return
 }
 
-func (config *Config) parseAuth() (err error) {
+func (cfg *config) parseAuth() (err error) {
 Loop:
-	for key, auth := range config.Auth {
+	for key, auth := range cfg.Auth {
 		switch key {
 		case AuthAnonymous:
 			switch strings.ToLower(auth) {
 			case UnderstandRasks:
-				config.auth.anonymous = true
+				cfg.auth.anonymous = true
 				break Loop
 			}
 		case AuthPassword:
 			switch {
 			case strings.HasPrefix(auth, AuthStatic):
-				config.auth.Password = newStaticPassword([]byte(strings.TrimPrefix(auth, AuthStatic)))
+				cfg.auth.Password = newStaticPassword([]byte(strings.TrimPrefix(auth, AuthStatic)))
 			case strings.HasPrefix(auth, AuthFile):
-				if config.auth.Password, err = newFilePassword(strings.TrimPrefix(auth, AuthFile)); err != nil {
+				if cfg.auth.Password, err = newFilePassword(strings.TrimPrefix(auth, AuthFile)); err != nil {
 					return
 				}
 			case strings.HasPrefix(auth, AuthRPC):
-				if config.auth.Password, err = newRpcPasswordAuth(strings.TrimPrefix(auth, AuthRPC)); err != nil {
+				if cfg.auth.Password, err = newRpcPasswordAuth(strings.TrimPrefix(auth, AuthRPC)); err != nil {
 					return
 				}
 			}
 		case AuthPubKey:
 			switch {
 			case strings.HasPrefix(auth, AuthStatic):
-				if config.auth.PublicKey, err = newStaticPublicKey([]byte(strings.TrimPrefix(auth, AuthStatic))); err != nil {
+				if cfg.auth.PublicKey, err = newStaticPublicKey([]byte(strings.TrimPrefix(auth, AuthStatic))); err != nil {
 					return
 				}
 			case strings.HasPrefix(auth, AuthFile):
-				if config.auth.PublicKey, err = newFilePublicKey(strings.TrimPrefix(auth, AuthFile)); err != nil {
+				if cfg.auth.PublicKey, err = newFilePublicKey(strings.TrimPrefix(auth, AuthFile)); err != nil {
 					return
 				}
 			case strings.HasPrefix(auth, AuthRPC):
-				if config.auth.PublicKey, err = newRpcPublicKeyAuth(strings.TrimPrefix(auth, AuthRPC)); err != nil {
+				if cfg.auth.PublicKey, err = newRpcPublicKeyAuth(strings.TrimPrefix(auth, AuthRPC)); err != nil {
 					return
 				}
 			}
