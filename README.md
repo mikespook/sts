@@ -10,7 +10,7 @@ STS: Secure Tunnel Server - a configurable and powerful ssh tunnel server.
 
 # Configuration
 
-Configuration file should be in YAML format.
+Config file should be in YAML format.
 
 Here is an example:
 
@@ -27,11 +27,11 @@ log:
 pwd: ../misc
 ```
 
-	* addr: "stsd" will bind to this address (and port)
-	* auth: See below
-	* keys: Private keys used by server
-	* log: See below
-	* pwd: Current working directory
+* addr: stsd will bind to this address (and port)
+* auth: See below
+* keys: Private keys used by server
+* log: See below
+* pwd: Current working directory
 
 ## Authorization
 
@@ -39,9 +39,9 @@ stsd has three auth options: anonymous, password and pubkey.
 
 When `anonymous` is set to `I Understand the Risks`(DANGER!!!), other options will be ignored and there will be no authenticated mechanism to stsd. `password` and `pubkey` should be one of following formats:
 
-	* `static://[string]`, the string will be used as password/pubkey directly;
-	* `file://[file]`, the file will be read and its contents will be used as password/pubkey;
-	* `rpc://[url]`, connect to a rpc server witch can serve two remote calls: 1) STS.PasswordAuth 2) STS.PublicKeyAuth. And "url" should be in form `(tcp|http)://[ip]:[port]/[path]`.
+* `static://[string]`, the string will be used as password/pubkey directly;
+* `file://[file]`, the file will be read and its contents will be used as password/pubkey;
+* `rpc://[url]`, connect to a rpc server witch can serve two remote calls: 1) STS.PasswordAuth 2) STS.PublicKeyAuth. And "url" should be in form `(tcp|http)://[ip]:[port]/[path]`.
 
 ## Log
 
@@ -70,8 +70,12 @@ Using SOCKS5 proxy:
 
 (_Alphabetic order_)
  
- * [Xing Xing][blog] <mikespook@gmail.com> [@Twitter][twitter]
+ * [Xing Xing][blog] &lt;<mikespook@gmail.com>&gt; [@Twitter][twitter]
 
 # Open Source - MIT Software License
 
-See LICENSE.
+See [LICENSE][license].
+
+[blog]: http://mikespook.com
+[twitter]: http://twitter.com/mikespook
+[license]: LICENSE
