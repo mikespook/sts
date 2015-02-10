@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"time"
-
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -53,4 +52,9 @@ func GetUser(session *mgo.Session, db, name string) (*User, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+func PutUser(session *mgo.Session, db string, user *User) error {
+	user.CreateAt = time.Now()
+	return session.DB(db).C(TableUser).Insert(user)
 }

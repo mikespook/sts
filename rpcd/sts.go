@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/rpc"
 	"net/url"
-
 	"github.com/mikespook/sts"
 	"github.com/mikespook/sts/model"
 	"golang.org/x/crypto/ssh"
@@ -70,10 +69,14 @@ func NewRPC(config *Config) (*RPC, error) {
 		return nil, err
 	}
 	if u.Scheme == "http" {
-		srv.server.HandleHTTP(u.Path, "")
+		srv.server.HandleHTTP(u.Path, "/_debug")
 		srv.isHttp = true
+	} else if u.Scheme == "" {
+		u.Scheme = "tcp"
+		u.Host = u.Path
+		u.Path = ""
 	}
-	if srv.listener, err = net.Listen("tcp", u.Host); err != nil {
+	if srv.listener, err = net.Listen(u.Scheme, u.Host); err != nil {
 		return nil, err
 	}
 	return srv, nil
