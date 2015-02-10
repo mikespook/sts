@@ -7,6 +7,25 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+func init() {
+	RegisterAuth(AuthPubKey, AuthStatic, staticPubKeyHandle)
+	RegisterAuth(AuthPubKey, AuthFile, filePubKeyHandle)
+}
+
+func staticPubKeyHandle(cfg *configAuth, key, prefix, value string) (exclusive bool, err error) {
+	if cfg.PublicKey, err = newStaticPublicKey([]byte(value)); err != nil {
+		return false, err
+	}
+	return false, nil
+}
+
+func filePubKeyHandle(cfg *configAuth, key, prefix, value string) (exclusive bool, err error) {
+	if cfg.PublicKey, err = newFilePublicKey(value); err != nil {
+		return false, err
+	}
+	return false, nil
+}
+
 type publicKeyCallback func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error)
 
 // PublicKey callback

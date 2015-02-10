@@ -7,6 +7,23 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+func init() {
+	RegisterAuth(AuthPassword, AuthStatic, staticPasswordHandle)
+	RegisterAuth(AuthPassword, AuthFile, filePasswordHandle)
+}
+
+func staticPasswordHandle(cfg *configAuth, key, prefix, value string) (bool, error) {
+	cfg.Password = newStaticPassword([]byte(value))
+	return false, nil
+}
+
+func filePasswordHandle(cfg *configAuth, key, prefix, value string) (exclusive bool, err error) {
+	if cfg.Password, err = newFilePassword(value); err != nil {
+		return false, err
+	}
+	return false, nil
+}
+
 type passwordCallback func(conn ssh.ConnMetadata, password []byte) (*ssh.Permissions, error)
 
 // Password callback
