@@ -14,18 +14,13 @@ const (
 	TableUser = "user"
 )
 
-type Auth struct {
-	Addr, User    string
-	Password, Key []byte
-}
-
 type User struct {
-	CreateAt time.Time `mgo:"create_at"`
+	CreateAt time.Time `bson:"create_at"`
 
-	Name string `mgo:"name"`
+	Name string `bson:"name"`
 
-	Keys     map[string][]byte
-	Password []byte `mgo:"password"`
+	Keys     map[string][]byte `bson:"keys"`
+	Password []byte            `bson:"password"`
 
 	Permissions ssh.Permissions
 }
@@ -43,7 +38,7 @@ func (user *User) CheckPublicKey(key []byte) bool {
 	return false
 }
 
-func Password(password []byte) (hash []byte) {
+func HashPassword(password []byte) (hash []byte) {
 	tmp := sha1.Sum(password)
 	return tmp[:]
 }

@@ -3,6 +3,7 @@ package sts
 import (
 	"net/rpc"
 	"net/url"
+
 	"github.com/mikespook/sts/model"
 	"golang.org/x/crypto/ssh"
 )
@@ -68,7 +69,7 @@ func (a *rpcPasswordAuth) Callback() passwordCallback {
 		args := &model.Auth{
 			Addr:     conn.RemoteAddr().String(),
 			User:     conn.User(),
-			Password: model.Password(password),
+			Password: model.HashPassword(password),
 		}
 		perm := &ssh.Permissions{}
 		if err := a.client.Call(RPCPasswordAuth, args, &perm); err != nil {
