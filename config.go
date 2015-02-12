@@ -10,7 +10,10 @@ import (
 
 type config struct {
 	Pwd  string
-	Addr string
+	Addr struct {
+		Tunnel string
+		RPC    string
+	}
 	Keys []string
 	Log  struct {
 		File, Level string

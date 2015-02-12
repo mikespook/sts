@@ -3,37 +3,43 @@ package sts
 import (
 	"io/ioutil"
 	"net"
-	"sync"
 
 	"github.com/mikespook/golib/log"
+	"github.com/mikespook/sts/auth"
 	"golang.org/x/crypto/ssh"
 )
 
-func New(cfg *config) *Server {
-	return &Server{config: cfg}
-}
+type Tunnel struct {
+	// Config
+	addr string
+	keys []string
+	auth *auth.Config
 
-type Server struct {
-	sync.RWMutex
-	config   *config
 	listener net.Listener
-	status   *Status
 }
 
-func (srv *Server) sshConfig() (config *ssh.ServerConfig, err error) {
-	config = &ssh.ServerConfig{
-		NoClientAuth: srv.config.auth.Anonymous,
+func NewTunnel(addr string, keys []string, config *auth.Config) *Tunnel {
+	return &Tunnel{
+		addr: addr,
+		keys: keys,
+		auth: config,
 	}
-	if !srv.config.auth.Anonymous {
-		if srv.config.auth.Password != nil {
-			config.PasswordCallback = srv.config.auth.Password.Callback()
+}
+
+func (tun *Tunnel) sshConfig() (config *ssh.ServerConfig, err error) {
+	config = &ssh.ServerConfig{
+		NoClientAuth: tun.auth.Anonymous,
+	}
+	if !tun.auth.Anonymous {
+		if tun.auth.Password != nil {
+			config.PasswordCallback = tun.auth.Password.Callback()
 		}
-		if srv.config.auth.PublicKey != nil {
-			config.PublicKeyCallback = srv.config.auth.PublicKey.Callback()
+		if tun.auth.PublicKey != nil {
+			config.PublicKeyCallback = tun.auth.PublicKey.Callback()
 		}
 	}
 
-	for _, key := range srv.config.Keys {
+	for _, key := range tun.keys {
 		var privBytes []byte
 		if privBytes, err = ioutil.ReadFile(key); err != nil {
 			return
@@ -48,19 +54,19 @@ func (srv *Server) sshConfig() (config *ssh.ServerConfig, err error) {
 	return
 }
 
-func (srv *Server) Serve() (err error) {
-	srv.listener, err = net.Listen("tcp", srv.config.Addr)
+func (tun *Tunnel) Serve() (err error) {
+	tun.listener, err = net.Listen("tcp", tun.addr)
 	if err != nil {
 		return
 	}
 	var sshConfig *ssh.ServerConfig
-	sshConfig, err = srv.sshConfig()
+	sshConfig, err = tun.sshConfig()
 	if err != nil {
 		return
 	}
 	for {
 		var conn net.Conn
-		conn, err = srv.listener.Accept()
+		conn, err = tun.listener.Accept()
 		if err != nil {
 			log.Errorf("Accept: %s", err)
 			continue
@@ -71,6 +77,6 @@ func (srv *Server) Serve() (err error) {
 	return nil
 }
 
-func (srv *Server) Close() error {
-	return srv.listener.Close()
+func (tun *Tunnel) Close() error {
+	return tun.listener.Close()
 }
