@@ -1,4 +1,4 @@
-package sts
+package auth
 
 import (
 	"bytes"
@@ -8,31 +8,24 @@ import (
 )
 
 func init() {
-	RegisterAuth(AuthPassword, AuthStatic, staticPasswordHandle)
-	RegisterAuth(AuthPassword, AuthFile, filePasswordHandle)
+	Register(KeyPassword, PrefixStatic, staticPasswordHandle)
+	Register(KeyPassword, PrefixFile, filePasswordHandle)
 }
 
-func staticPasswordHandle(cfg *configAuth, key, prefix, value string) (bool, error) {
+func staticPasswordHandle(cfg *Config, key, prefix, value string) (bool, error) {
 	cfg.Password = newStaticPassword([]byte(value))
 	return false, nil
 }
 
-func filePasswordHandle(cfg *configAuth, key, prefix, value string) (exclusive bool, err error) {
+func filePasswordHandle(cfg *Config, key, prefix, value string) (exclusive bool, err error) {
 	if cfg.Password, err = newFilePassword(value); err != nil {
 		return false, err
 	}
 	return false, nil
 }
 
-type passwordCallback func(conn ssh.ConnMetadata, password []byte) (*ssh.Permissions, error)
-
-// Password callback
-type PasswordAuth interface {
-	Callback() passwordCallback
-}
-
 // The password read from the config field
-func newStaticPassword(password []byte) PasswordAuth {
+func newStaticPassword(password []byte) Password {
 	return &staticPassword{password}
 }
 
@@ -45,12 +38,12 @@ func (sp *staticPassword) Callback() passwordCallback {
 		if bytes.Compare(password, sp.password) == 0 {
 			return nil, nil
 		}
-		return nil, ErrAuthFailed
+		return nil, ErrFailed
 	}
 }
 
 // The password read from the file `f`
-func newFilePassword(f string) (PasswordAuth, error) {
+func newFilePassword(f string) (Password, error) {
 	password, err := ioutil.ReadFile(f)
 	if err != nil {
 		return nil, err

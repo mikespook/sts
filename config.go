@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/mikespook/sts/auth"
 	"gopkg.in/yaml.v2"
 )
 
@@ -15,13 +16,7 @@ type config struct {
 		File, Level string
 	}
 	Auth map[string]string
-	auth configAuth
-}
-
-type configAuth struct {
-	anonymous bool
-	PublicKey PublicKeyAuth
-	Password  PasswordAuth
+	auth *auth.Config
 }
 
 func LoadConfig(filename string) (cfg *config, err error) {
@@ -35,10 +30,6 @@ func LoadConfig(filename string) (cfg *config, err error) {
 	if err = os.Chdir(cfg.Pwd); err != nil {
 		return
 	}
-	err = cfg.parseAuth()
+	cfg.auth, err = auth.LoadConfig(cfg.Auth)
 	return
-}
-
-func (cfg *config) parseAuth() (err error) {
-	return parseAuth(&cfg.auth, cfg.Auth)
 }

@@ -1,4 +1,4 @@
-package sts
+package auth
 
 import (
 	"bytes"
@@ -8,29 +8,22 @@ import (
 )
 
 func init() {
-	RegisterAuth(AuthPubKey, AuthStatic, staticPubKeyHandle)
-	RegisterAuth(AuthPubKey, AuthFile, filePubKeyHandle)
+	Register(KeyPubKey, PrefixStatic, staticPubKeyHandle)
+	Register(KeyPubKey, PrefixFile, filePubKeyHandle)
 }
 
-func staticPubKeyHandle(cfg *configAuth, key, prefix, value string) (exclusive bool, err error) {
+func staticPubKeyHandle(cfg *Config, key, prefix, value string) (exclusive bool, err error) {
 	if cfg.PublicKey, err = newStaticPublicKey([]byte(value)); err != nil {
 		return false, err
 	}
 	return false, nil
 }
 
-func filePubKeyHandle(cfg *configAuth, key, prefix, value string) (exclusive bool, err error) {
+func filePubKeyHandle(cfg *Config, key, prefix, value string) (exclusive bool, err error) {
 	if cfg.PublicKey, err = newFilePublicKey(value); err != nil {
 		return false, err
 	}
 	return false, nil
-}
-
-type publicKeyCallback func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error)
-
-// PublicKey callback
-type PublicKeyAuth interface {
-	Callback() publicKeyCallback
 }
 
 type staticPublicKey struct {
@@ -38,7 +31,7 @@ type staticPublicKey struct {
 }
 
 // The public key read from the config field
-func newStaticPublicKey(key []byte) (PublicKeyAuth, error) {
+func newStaticPublicKey(key []byte) (PublicKey, error) {
 	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(key)
 	if err != nil {
 		return nil, err
@@ -51,12 +44,12 @@ func (sp *staticPublicKey) Callback() publicKeyCallback {
 		if bytes.Compare(sp.keyBytes, key.Marshal()) == 0 {
 			return nil, nil
 		}
-		return nil, ErrAuthFailed
+		return nil, ErrFailed
 	}
 }
 
 // The public key read from the file `f`
-func newFilePublicKey(f string) (PublicKeyAuth, error) {
+func newFilePublicKey(f string) (PublicKey, error) {
 	key, err := ioutil.ReadFile(f)
 	if err != nil {
 		return nil, err

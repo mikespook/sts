@@ -22,9 +22,9 @@ type Server struct {
 
 func (srv *Server) sshConfig() (config *ssh.ServerConfig, err error) {
 	config = &ssh.ServerConfig{
-		NoClientAuth: srv.config.auth.anonymous,
+		NoClientAuth: srv.config.auth.Anonymous,
 	}
-	if !srv.config.auth.anonymous {
+	if !srv.config.auth.Anonymous {
 		if srv.config.auth.Password != nil {
 			config.PasswordCallback = srv.config.auth.Password.Callback()
 		}

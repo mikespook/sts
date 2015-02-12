@@ -1,4 +1,4 @@
-package sts
+package auth
 
 import (
 	"net/rpc"
@@ -9,24 +9,24 @@ import (
 )
 
 const (
-	RPCPasswordAuth = "STS.PasswordAuth"
-	RPCPubKeyAuth   = "STS.PublicKeyAuth"
+	RPCPassword = "Auth.Password"
+	RPCPubKey   = "Auth.PublicKey"
 )
 
 func init() {
-	RegisterAuth(AuthPassword, AuthRPC, rpcPasswordHandle)
-	RegisterAuth(AuthPubKey, AuthRPC, rpcPubKeyHandle)
+	Register(KeyPassword, PrefixRPC, rpcPasswordHandle)
+	Register(KeyPubKey, PrefixRPC, rpcPubKeyHandle)
 }
 
-func rpcPasswordHandle(cfg *configAuth, key, prefix, value string) (exclusive bool, err error) {
-	if cfg.Password, err = newRpcPasswordAuth(value); err != nil {
+func rpcPasswordHandle(cfg *Config, key, prefix, value string) (exclusive bool, err error) {
+	if cfg.Password, err = newRpcPassword(value); err != nil {
 		return false, err
 	}
 	return false, nil
 }
 
-func rpcPubKeyHandle(cfg *configAuth, key, prefix, value string) (exclusive bool, err error) {
-	if cfg.PublicKey, err = newRpcPublicKeyAuth(value); err != nil {
+func rpcPubKeyHandle(cfg *Config, key, prefix, value string) (exclusive bool, err error) {
+	if cfg.PublicKey, err = newRpcPublicKey(value); err != nil {
 		return false, err
 	}
 	return false, nil
@@ -52,19 +52,19 @@ func newRpcClient(rawurl string) (client *rpc.Client, err error) {
 	return
 }
 
-func newRpcPasswordAuth(rawurl string) (PasswordAuth, error) {
+func newRpcPassword(rawurl string) (Password, error) {
 	client, err := newRpcClient(rawurl)
 	if err != nil {
 		return nil, err
 	}
-	return &rpcPasswordAuth{client}, nil
+	return &rpcPassword{client}, nil
 }
 
-type rpcPasswordAuth struct {
+type rpcPassword struct {
 	client *rpc.Client
 }
 
-func (a *rpcPasswordAuth) Callback() passwordCallback {
+func (a *rpcPassword) Callback() passwordCallback {
 	return func(conn ssh.ConnMetadata, password []byte) (*ssh.Permissions, error) {
 		args := &model.Auth{
 			Addr:     conn.RemoteAddr().String(),
@@ -72,26 +72,26 @@ func (a *rpcPasswordAuth) Callback() passwordCallback {
 			Password: model.HashPassword(password),
 		}
 		perm := &ssh.Permissions{}
-		if err := a.client.Call(RPCPasswordAuth, args, &perm); err != nil {
+		if err := a.client.Call(RPCPassword, args, &perm); err != nil {
 			return nil, err
 		}
 		return perm, nil
 	}
 }
 
-func newRpcPublicKeyAuth(rawurl string) (PublicKeyAuth, error) {
+func newRpcPublicKey(rawurl string) (PublicKey, error) {
 	client, err := newRpcClient(rawurl)
 	if err != nil {
 		return nil, err
 	}
-	return &rpcPublicKeyAuth{client}, nil
+	return &rpcPublicKey{client}, nil
 }
 
-type rpcPublicKeyAuth struct {
+type rpcPublicKey struct {
 	client *rpc.Client
 }
 
-func (a *rpcPublicKeyAuth) Callback() publicKeyCallback {
+func (a *rpcPublicKey) Callback() publicKeyCallback {
 	return func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
 		args := &model.Auth{
 			Addr: conn.RemoteAddr().String(),
@@ -99,7 +99,7 @@ func (a *rpcPublicKeyAuth) Callback() publicKeyCallback {
 			Key:  key.Marshal(),
 		}
 		perm := &ssh.Permissions{}
-		if err := a.client.Call(RPCPubKeyAuth, args, &perm); err != nil {
+		if err := a.client.Call(RPCPubKey, args, &perm); err != nil {
 			return nil, err
 		}
 		return perm, nil

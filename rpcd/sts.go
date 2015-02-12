@@ -5,51 +5,52 @@ import (
 	"net/http"
 	"net/rpc"
 	"net/url"
-	"github.com/mikespook/sts"
+
+	"github.com/mikespook/sts/auth"
 	"github.com/mikespook/sts/model"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/mgo.v2"
 )
 
-type STS struct {
+type Auth struct {
 	session *mgo.Session
 	dbName  string
 }
 
-func (data *STS) PasswordAuth(auth *model.Auth, perm *ssh.Permissions) error {
-	if auth.User == "" {
-		return sts.ErrAuthFailed
+func (a *Auth) Password(data *model.Auth, perm *ssh.Permissions) error {
+	if data.User == "" {
+		return auth.ErrFailed
 	}
-	if auth.Password == nil {
-		return sts.ErrAuthFailed
+	if data.Password == nil {
+		return auth.ErrFailed
 	}
-	user, err := model.GetUser(data.session, data.dbName, auth.User)
+	user, err := model.GetUser(a.session, a.dbName, data.User)
 	if err != nil {
 		return err
 	}
-	if user.CheckPassword(auth.Password) {
+	if user.CheckPassword(data.Password) {
 		*perm = user.Permissions
 		return nil
 	}
-	return sts.ErrAuthFailed
+	return auth.ErrFailed
 }
 
-func (data *STS) PublicKeyAuth(auth *model.Auth, perm *ssh.Permissions) error {
-	if auth.User == "" {
-		return sts.ErrAuthFailed
+func (a *Auth) PublicKey(data *model.Auth, perm *ssh.Permissions) error {
+	if data.User == "" {
+		return auth.ErrFailed
 	}
-	if auth.Key == nil {
-		return sts.ErrAuthFailed
+	if data.Key == nil {
+		return auth.ErrFailed
 	}
-	user, err := model.GetUser(data.session, data.dbName, auth.User)
+	user, err := model.GetUser(a.session, a.dbName, data.User)
 	if err != nil {
 		return err
 	}
-	if user.CheckPublicKey(auth.Key) {
+	if user.CheckPublicKey(data.Key) {
 		*perm = user.Permissions
 		return nil
 	}
-	return sts.ErrAuthFailed
+	return auth.ErrFailed
 }
 
 func NewRPC(config *Config) (*RPC, error) {
@@ -61,7 +62,7 @@ func NewRPC(config *Config) (*RPC, error) {
 		session: session,
 		server:  rpc.NewServer(),
 	}
-	if err := srv.server.RegisterName("STS", &STS{session, config.Mongo.Db}); err != nil {
+	if err := srv.server.Register(&Auth{session, config.Mongo.Db}); err != nil {
 		return nil, err
 	}
 	var u *url.URL
