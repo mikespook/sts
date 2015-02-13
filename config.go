@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type config struct {
+type Config struct {
 	Pwd  string
 	Addr struct {
 		Tunnel string
@@ -22,7 +22,7 @@ type config struct {
 	auth *auth.Config
 }
 
-func LoadConfig(filename string) (cfg *config, err error) {
+func LoadConfig(filename string) (cfg *Config, err error) {
 	var data []byte
 	if data, err = ioutil.ReadFile(filename); err != nil {
 		return
@@ -30,6 +30,11 @@ func LoadConfig(filename string) (cfg *config, err error) {
 	if err = yaml.Unmarshal(data, &cfg); err != nil {
 		return
 	}
+	err = cfg.Init()
+	return
+}
+
+func (cfg *Config) Init() (err error) {
 	if err = os.Chdir(cfg.Pwd); err != nil {
 		return
 	}

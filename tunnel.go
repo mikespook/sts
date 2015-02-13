@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"net"
 
-	"github.com/mikespook/golib/log"
 	"github.com/mikespook/sts/auth"
 	"golang.org/x/crypto/ssh"
 )
@@ -16,6 +15,8 @@ type Tunnel struct {
 	auth *auth.Config
 
 	listener net.Listener
+
+	bus Bus
 }
 
 func NewTunnel(addr string, keys []string, config *auth.Config) *Tunnel {
@@ -68,10 +69,17 @@ func (tun *Tunnel) Serve() (err error) {
 		var conn net.Conn
 		conn, err = tun.listener.Accept()
 		if err != nil {
-			log.Errorf("Accept: %s", err)
-			continue
+			if opErr, ok := err.(*net.OpError); ok {
+				if opErr.Temporary() || opErr.Timeout() {
+					tun.bus.Errorf("Accept: %s", opErr)
+					continue
+				}
+				break
+			}
+			tun.bus.Errorf("Accept: %s", err)
+			break
 		}
-		go doSession(conn, sshConfig)
+		go tun.bus.Session(conn, sshConfig)
 	}
 
 	return nil

@@ -3,6 +3,8 @@ package sts
 import (
 	"sync"
 	"time"
+
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -10,6 +12,22 @@ const (
 	StatusRead    = "READ"
 	StatusWritten = "WRITTEN"
 )
+
+type Stat struct {
+	server *Server
+}
+
+func (stat *Stat) User(id *bson.ObjectId, reply *struct{}) error {
+	return nil
+}
+
+func (stat *Stat) Conn(id bson.ObjectId, reply *struct{}) error {
+	return nil
+}
+
+func (stat *Stat) Server(_, reply *struct{}) error {
+	return nil
+}
 
 type Status struct {
 	sync.RWMutex

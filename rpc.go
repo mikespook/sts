@@ -10,25 +10,32 @@ import (
 func NewRPC(addr string) *RPC {
 	return &RPC{
 		addr:   addr,
-		server: rpc.NewServer(),
+		Server: rpc.NewServer(),
 	}
 }
 
 type RPC struct {
-	addr string
+	*rpc.Server
 
-	server   *rpc.Server
+	addr     string
 	listener net.Listener
+	bus      Bus
 }
 
 func (srv *RPC) Serve() error {
+	if err := srv.RegisterName("Ctrl", &Ctrl{srv.bus.Server()}); err != nil {
+		return err
+	}
+	if err := srv.RegisterName("Stat", &Stat{srv.bus.Server()}); err != nil {
+		return err
+	}
 	u, err := url.Parse(srv.addr)
 	if err != nil {
 		return err
 	}
 	isHttp := u.Scheme == "http"
 	if isHttp {
-		srv.server.HandleHTTP(u.Path, "/_debug")
+		srv.HandleHTTP(u.Path, "/_debug")
 	} else if u.Scheme == "" {
 		u.Scheme = "tcp"
 		u.Host = u.Path
@@ -40,7 +47,7 @@ func (srv *RPC) Serve() error {
 	if isHttp {
 		http.Serve(srv.listener, nil)
 	} else {
-		srv.server.Accept(srv.listener)
+		srv.Accept(srv.listener)
 	}
 	return nil
 }

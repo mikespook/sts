@@ -9,9 +9,12 @@ import (
 
 	"github.com/mikespook/golib/log"
 	"golang.org/x/crypto/ssh"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type session struct {
+	Id bson.ObjectId
+
 	SshConn     ssh.Conn
 	ChannelChan <-chan ssh.NewChannel
 	OOBReqChan  <-chan *ssh.Request
@@ -123,26 +126,20 @@ func (s *session) Close() error {
 	return s.SshConn.Close()
 }
 
-func doSession(conn net.Conn, config *ssh.ServerConfig) {
-	defer func() {
-		conn.Close()
-		log.Messagef("Disconnect: %s", conn.RemoteAddr())
-	}()
-	log.Messagef("Connect: %s", conn.RemoteAddr())
-	s := &session{}
-	var err error
+func newSession(conn net.Conn, config *ssh.ServerConfig) (s *session, err error) {
+	s = &session{
+		Id: bson.NewObjectId(),
+	}
 	if s.SshConn, s.ChannelChan, s.OOBReqChan,
 		err = ssh.NewServerConn(conn, config); err != nil {
 		if err != io.EOF {
-			log.Errorf("SSH-Connect: %s", err)
+			return
 		}
-		return
 	}
-	log.Messagef("SSH-Connect: %s@%s (%s)", s.SshConn.User(),
-		s.SshConn.RemoteAddr(), s.SshConn.ClientVersion())
+	return
+}
+
+func (s *session) Do() {
 	go s.OOBRequest()
 	s.Channels()
-	log.Messagef("SSH-Disconnect: %s@%s (%s)", s.SshConn.User(),
-		s.SshConn.RemoteAddr(), s.SshConn.ClientVersion())
-	return
 }

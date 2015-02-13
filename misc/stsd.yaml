@@ -3,10 +3,10 @@ addr:
     rpc:    127.0.0.1:2223
 auth:
     anonymous: false
-#    password: static://123456
-    password: rpc://127.0.0.1:9000
-#    pubkey: file://id_rsa.pub
-    pubkey: rpc://127.0.0.1:9000
+    password: static://123456
+#    password: rpc://127.0.0.1:9000
+    pubkey: file://id_rsa.pub
+#    pubkey: rpc://127.0.0.1:9000
 keys: [ id_rsa ]
 log:
     file:

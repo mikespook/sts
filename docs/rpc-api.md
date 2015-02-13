@@ -36,13 +36,9 @@ This method is used for cutting a connection off.
 
 This method is used for Kicking user off line.
 
-## Ctrl.Reboot
+## Ctrl.Restart
 
-This method is used for restart internal service, including RPC & Tunnel.
-
-## Ctrl.Config
-
-This method is used for upgrading configuration of `stsd` and effects will be taken by calling `Ctrl.Reboot`.
+This method is used for restart the internal tunnel service.
 
 ## Stat.User
 
@@ -55,5 +51,3 @@ This method returns aggregation status of tunnels, including online users, activ
 ## Stat.Server
 
 This method returns status of the service, including PID, established time and the last internal error.
-
-

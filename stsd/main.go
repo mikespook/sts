@@ -44,9 +44,7 @@ func main() {
 		signal.Send(os.Getpid(), os.Interrupt)
 	}()
 	signal.Bind(os.Interrupt, func() uint {
-		if err := tunnel.Close(); err != nil {
-			log.Errorf("Stopping: %s", err)
-		}
+		tunnel.Close()
 		return signal.BreakExit
 	})
 	signal.Wait()
