@@ -1,9 +1,10 @@
-package sts
+package rpc
 
 import (
 	"sync"
 	"time"
 
+	"github.com/mikespook/sts/bus"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -14,7 +15,7 @@ const (
 )
 
 type Stat struct {
-	server *Server
+	bus bus.Stat
 }
 
 func (stat *Stat) User(id *bson.ObjectId, reply *struct{}) error {

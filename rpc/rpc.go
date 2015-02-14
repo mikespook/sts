@@ -1,15 +1,17 @@
-package sts
+package rpc
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"net/rpc"
 	"net/url"
+
+	"github.com/mikespook/sts/bus"
 )
 
-func NewRPC(addr string) *RPC {
+func New() bus.Service {
 	return &RPC{
-		addr:   addr,
 		Server: rpc.NewServer(),
 	}
 }
@@ -17,19 +19,33 @@ func NewRPC(addr string) *RPC {
 type RPC struct {
 	*rpc.Server
 
-	addr     string
+	config   *Config
 	listener net.Listener
-	bus      Bus
+	bus      bus.Bus
+}
+
+func (srv *RPC) Bus(bus bus.Bus) {
+	srv.bus = bus
+}
+
+func (srv *RPC) Config(config interface{}) (err error) {
+	cfg, ok := config.(*Config)
+	if !ok {
+		err = fmt.Errorf("Wrong paramater %T, wants %T", config, cfg)
+		return
+	}
+	srv.config = cfg
+	return
 }
 
 func (srv *RPC) Serve() error {
-	if err := srv.RegisterName("Ctrl", &Ctrl{srv.bus.Server()}); err != nil {
+	if err := srv.RegisterName("Ctrl", &Ctrl{srv.bus.Ctrl()}); err != nil {
 		return err
 	}
-	if err := srv.RegisterName("Stat", &Stat{srv.bus.Server()}); err != nil {
+	if err := srv.RegisterName("Stat", &Stat{srv.bus.Stat()}); err != nil {
 		return err
 	}
-	u, err := url.Parse(srv.addr)
+	u, err := url.Parse(srv.config.Addr)
 	if err != nil {
 		return err
 	}
@@ -54,4 +70,8 @@ func (srv *RPC) Serve() error {
 
 func (srv *RPC) Close() error {
 	return srv.listener.Close()
+}
+
+func (srv *RPC) Restart() error {
+	return nil
 }

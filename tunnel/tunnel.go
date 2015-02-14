@@ -1,30 +1,25 @@
-package sts
+package tunnel
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net"
 
 	"github.com/mikespook/sts/auth"
+	"github.com/mikespook/sts/bus"
 	"golang.org/x/crypto/ssh"
 )
 
-type Tunnel struct {
-	// Config
-	addr string
-	keys []string
-	auth *auth.Config
-
-	listener net.Listener
-
-	bus Bus
+func New() bus.Service {
+	return &Tunnel{}
 }
 
-func NewTunnel(addr string, keys []string, config *auth.Config) *Tunnel {
-	return &Tunnel{
-		addr: addr,
-		keys: keys,
-		auth: config,
-	}
+type Tunnel struct {
+	config   *Config
+	auth     *auth.Config
+	listener net.Listener
+
+	bus bus.Bus
 }
 
 func (tun *Tunnel) sshConfig() (config *ssh.ServerConfig, err error) {
@@ -40,7 +35,7 @@ func (tun *Tunnel) sshConfig() (config *ssh.ServerConfig, err error) {
 		}
 	}
 
-	for _, key := range tun.keys {
+	for _, key := range tun.config.Keys {
 		var privBytes []byte
 		if privBytes, err = ioutil.ReadFile(key); err != nil {
 			return
@@ -55,8 +50,23 @@ func (tun *Tunnel) sshConfig() (config *ssh.ServerConfig, err error) {
 	return
 }
 
+func (tun *Tunnel) Bus(bus bus.Bus) {
+	tun.bus = bus
+}
+
+func (tun *Tunnel) Config(config interface{}) (err error) {
+	cfg, ok := config.(*Config)
+	if !ok {
+		err = fmt.Errorf("Wrong paramater %t, wants %t", config, cfg)
+		return
+	}
+	tun.config = cfg
+	tun.auth, err = auth.LoadConfig(cfg.Auth)
+	return
+}
+
 func (tun *Tunnel) Serve() (err error) {
-	tun.listener, err = net.Listen("tcp", tun.addr)
+	tun.listener, err = net.Listen("tcp", tun.config.Addr)
 	if err != nil {
 		return
 	}
@@ -86,5 +96,10 @@ func (tun *Tunnel) Serve() (err error) {
 }
 
 func (tun *Tunnel) Close() error {
+	tun.bus.Close()
 	return tun.listener.Close()
+}
+
+func (tun *Tunnel) Restart() error {
+	return nil
 }

@@ -1,45 +1,41 @@
-// TODO refactoring Bus design
 package sts
 
 import (
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/mikespook/golib/log"
-	"github.com/mikespook/sts/auth"
+	"github.com/mikespook/sts/bus"
+	"github.com/mikespook/sts/rpc"
+	"github.com/mikespook/sts/tunnel"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/mgo.v2/bson"
 )
 
-type Bus interface {
-	Server() *Server
-	Errorf(format string, args ...interface{})
-	Messagef(format string, args ...interface{})
-	Debugf(format string, args ...interface{})
-	Warningf(format string, args ...interface{})
-
-	Session(conn net.Conn, config *ssh.ServerConfig)
-}
+const (
+	Tunnel = "Tunnel"
+	RPC    = "RPC"
+)
 
 func New(cfg *Config) *Server {
 	srv := &Server{
 		config:    cfg,
 		errExit:   make(chan error),
 		errCommon: make(chan error),
+		services:  make(map[string]bus.Service),
 		sessions:  make(map[bson.ObjectId]*session),
 	}
 	return srv
 }
 
 type Server struct {
-	rpc    *RPC
-	tunnel *Tunnel
+	services map[string]bus.Service
 
 	errExit   chan error
 	errCommon chan error
 
 	config *Config
-	status *Status
 
 	sessions map[bson.ObjectId]*session
 }
@@ -65,10 +61,6 @@ func (srv *Server) Session(conn net.Conn, config *ssh.ServerConfig) {
 	log.Messagef("SSH-Disconnect: %s", s.Id.Hex())
 }
 
-func (srv *Server) Server() *Server {
-	return srv
-}
-
 func (srv *Server) Errorf(format string, args ...interface{}) {
 	log.Errorf(format, args...)
 }
@@ -86,21 +78,24 @@ func (srv *Server) Messagef(format string, args ...interface{}) {
 }
 
 func (srv *Server) Serve() (err error) {
-	go srv.startTunnel(srv.config.Addr.Tunnel, srv.config.Keys, srv.config.auth)
-	go srv.startRPC(srv.config.Addr.RPC)
+	srv.Messagef("Set PWD: %s", srv.config.Pwd)
+	if err = os.Chdir(srv.config.Pwd); err != nil {
+		return
+	}
+	go srv.start(rpc.New, RPC, &srv.config.RPC)
+	go srv.start(tunnel.New, Tunnel, &srv.config.Tunnel)
 	return srv.wait()
 }
 
-func (srv *Server) Close() error {
-	srv.closeTunnel()
-	srv.closeRPC()
+func (srv *Server) Close() {
+	srv.close(Tunnel)
+	srv.close(RPC)
 	srv.shutdown()
-	return nil
 }
 
 func (srv *Server) reboot() {
-	srv.closeTunnel()
-	go srv.startTunnel(srv.config.Addr.Tunnel, srv.config.Keys, srv.config.auth)
+	srv.close(Tunnel)
+	go srv.start(tunnel.New, Tunnel, srv.config.Tunnel)
 }
 
 func (srv *Server) wait() (err error) {
@@ -121,38 +116,36 @@ func (srv *Server) shutdown() {
 	close(srv.errCommon)
 }
 
-func (srv *Server) startTunnel(addr string, keys []string, config *auth.Config) {
-	srv.tunnel = NewTunnel(addr, keys, config)
-	srv.tunnel.bus = srv
-	if err := srv.tunnel.Serve(); err != nil {
-		srv.errCommon <- fmt.Errorf("Tunnel Serve: %s", err)
+func (srv *Server) start(f func() bus.Service, name string, config interface{}) {
+	srv.Messagef("Start %s: %+v", name, config)
+	service := f()
+	service.Bus(srv)
+	if err := service.Config(config); err != nil {
+		srv.errExit <- fmt.Errorf("%s Start: %s", name, err)
+		return
+	}
+	if err := service.Serve(); err != nil {
+		srv.errExit <- fmt.Errorf("%s Serve: %s", name, err)
+		return
+	}
+	srv.services[name] = service
+}
+
+func (srv *Server) close(name string) {
+	srv.Messagef("Close %s", name)
+	service, ok := srv.services[name]
+	if !ok {
+		return
+	}
+	if err := service.Close(); err != nil {
+		srv.errCommon <- fmt.Errorf("%s Close: %s", name, err)
 	}
 }
 
-func (srv *Server) closeTunnel() {
-	if err := srv.tunnel.Close(); err != nil {
-		srv.errCommon <- fmt.Errorf("Tunnel Close: %s", err)
-	}
-}
-
-func (srv *Server) startRPC(addr string) {
-	srv.rpc = NewRPC(addr)
-	srv.rpc.bus = srv
-	if err := srv.rpc.Serve(); err != nil {
-		srv.errExit <- fmt.Errorf("RPC Serve: %s", err)
-	}
-}
-
-func (srv *Server) closeRPC() {
-	if err := srv.rpc.Close(); err != nil {
-		srv.errCommon <- fmt.Errorf("RPC Close: %s", err)
-	}
-}
-
-func (srv *Server) kickoff(id bson.ObjectId) error {
+func (srv *Server) Ctrl() bus.Ctrl {
 	return nil
 }
 
-func (srv *Server) cutoff(id bson.ObjectId) error {
+func (srv *Server) Stat() bus.Stat {
 	return nil
 }

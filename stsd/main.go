@@ -25,17 +25,16 @@ func main() {
 		flag.PrintDefaults()
 		return
 	}
+	log.Messagef("STS: Secure Tunnel Server: Starting")
 	cfg, err := sts.LoadConfig(config)
 	if err != nil {
-		log.Errorf("Start: %s", err)
+		log.Errorf("Load config: %s", err)
 		return
 	}
 	if err := log.Init(cfg.Log.File, log.StrToLevel(cfg.Log.Level), 0); err != nil {
-		log.Errorf("Start: %s", err)
+		log.Errorf("Init log: %s", err)
 		return
 	}
-	log.Messagef("Starting: pid=%d, addr=%s, keys=%+v, pwd=%s",
-		os.Getpid(), cfg.Addr, cfg.Keys, cfg.Pwd)
 	tunnel := sts.New(cfg)
 	go func() {
 		if err := tunnel.Serve(); err != nil {
@@ -48,5 +47,5 @@ func main() {
 		return signal.BreakExit
 	})
 	signal.Wait()
-	log.Messagef("Stopped")
+	log.Messagef("STS: Secure Tunnel Server: Shutdown")
 }
