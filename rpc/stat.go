@@ -3,8 +3,7 @@ package rpc
 import (
 	"sync"
 	"time"
-
-	"github.com/mikespook/sts/bus"
+	"github.com/mikespook/sts/iface"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -15,7 +14,7 @@ const (
 )
 
 type Stat struct {
-	bus bus.Stat
+	stat iface.Stat
 }
 
 func (stat *Stat) User(id *bson.ObjectId, reply *struct{}) error {

@@ -1,23 +1,23 @@
 package rpc
 
 import (
-	"github.com/mikespook/sts/bus"
+	"github.com/mikespook/sts/iface"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type Ctrl struct {
-	bus bus.Ctrl
+	ctrl iface.Ctrl
 }
 
 func (ctrl *Ctrl) Restart(_, _ *struct{}) (err error) {
-	ctrl.bus.Restart()
+	ctrl.ctrl.Restart()
 	return
 }
 
 func (ctrl *Ctrl) Cutoff(id bson.ObjectId, reply *struct{}) error {
-	return ctrl.bus.Cutoff(id)
+	return ctrl.ctrl.Cutoff(id)
 }
 
 func (ctrl *Ctrl) Kickoff(id bson.ObjectId, reply *struct{}) error {
-	return ctrl.bus.Kickoff(id)
+	return ctrl.ctrl.Kickoff(id)
 }

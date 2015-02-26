@@ -7,10 +7,10 @@ import (
 	"net/rpc"
 	"net/url"
 
-	"github.com/mikespook/sts/bus"
+	"github.com/mikespook/sts/iface"
 )
 
-func New() bus.Service {
+func New() iface.Service {
 	return &RPC{
 		Server: rpc.NewServer(),
 	}
@@ -21,11 +21,11 @@ type RPC struct {
 
 	config   *Config
 	listener net.Listener
-	bus      bus.Bus
+	daemon   iface.Daemon
 }
 
-func (srv *RPC) Bus(bus bus.Bus) {
-	srv.bus = bus
+func (srv *RPC) Daemon(daemon iface.Daemon) {
+	srv.daemon = daemon
 }
 
 func (srv *RPC) Config(config interface{}) (err error) {
@@ -39,10 +39,10 @@ func (srv *RPC) Config(config interface{}) (err error) {
 }
 
 func (srv *RPC) Serve() error {
-	if err := srv.RegisterName("Ctrl", &Ctrl{srv.bus.Ctrl()}); err != nil {
+	if err := srv.RegisterName("Ctrl", &Ctrl{srv.daemon.Ctrl()}); err != nil {
 		return err
 	}
-	if err := srv.RegisterName("Stat", &Stat{srv.bus.Stat()}); err != nil {
+	if err := srv.RegisterName("Stat", &Stat{srv.daemon.Stat()}); err != nil {
 		return err
 	}
 	u, err := url.Parse(srv.config.Addr)

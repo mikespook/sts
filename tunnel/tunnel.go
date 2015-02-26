@@ -5,13 +5,18 @@ import (
 	"io/ioutil"
 	"net"
 
+	"github.com/mikespook/golib/log"
 	"github.com/mikespook/sts/auth"
-	"github.com/mikespook/sts/bus"
+	"github.com/mikespook/sts/iface"
+	"github.com/mikespook/sts/session"
 	"golang.org/x/crypto/ssh"
 )
 
-func New() bus.Service {
-	return &Tunnel{}
+func New() iface.Service {
+	return &Tunnel{
+		sessions: session.NewSessions(),
+		agents:   session.NewAgents(),
+	}
 }
 
 type Tunnel struct {
@@ -19,7 +24,9 @@ type Tunnel struct {
 	auth     *auth.Config
 	listener net.Listener
 
-	bus bus.Bus
+	daemon   iface.Daemon
+	sessions *session.Sessions
+	agents   *session.Agents
 }
 
 func (tun *Tunnel) sshConfig() (config *ssh.ServerConfig, err error) {
@@ -50,8 +57,8 @@ func (tun *Tunnel) sshConfig() (config *ssh.ServerConfig, err error) {
 	return
 }
 
-func (tun *Tunnel) Bus(bus bus.Bus) {
-	tun.bus = bus
+func (tun *Tunnel) Daemon(daemon iface.Daemon) {
+	tun.daemon = daemon
 }
 
 func (tun *Tunnel) Config(config interface{}) (err error) {
@@ -81,25 +88,47 @@ func (tun *Tunnel) Serve() (err error) {
 		if err != nil {
 			if opErr, ok := err.(*net.OpError); ok {
 				if opErr.Temporary() || opErr.Timeout() {
-					tun.bus.Errorf("Accept: %s", opErr)
+					log.Errorf("Accept: %s", opErr)
 					continue
 				}
 				break
 			}
-			tun.bus.Errorf("Accept: %s", err)
+			log.Errorf("Accept: %s", err)
 			break
 		}
-		go tun.bus.Session(conn, sshConfig)
+		go tun.session(conn, sshConfig)
 	}
 
 	return nil
 }
 
 func (tun *Tunnel) Close() error {
-	tun.bus.Close()
+	tun.sessions.Close()
 	return tun.listener.Close()
 }
 
 func (tun *Tunnel) Restart() error {
 	return nil
+}
+
+func (tun *Tunnel) session(conn net.Conn, config *ssh.ServerConfig) {
+	defer func() {
+		conn.Close()
+		log.Messagef("Disconnect: %s", conn.RemoteAddr())
+	}()
+	log.Messagef("Connect: %s", conn.RemoteAddr())
+
+	s, err := session.New(conn, config)
+	if err != nil {
+		log.Errorf("SSH-Connect: %s", err)
+		return
+	}
+	defer s.Close()
+	log.Messagef("SSH-Connect: %s [%s@%s] (%s)", s.Id, s.SshConn.User(),
+		s.SshConn.RemoteAddr(), s.SshConn.ClientVersion())
+
+	tun.sessions.Add(s)
+	defer tun.sessions.Remove(s)
+	s.Serve()
+	log.Messagef("SSH-Disconnect: %s", s.Id.Hex())
 }
