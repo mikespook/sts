@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/mikespook/golib/log"
-	"github.com/mikespook/sts/iface"
+	"github.com/mikespook/sts/model"
 	"github.com/mikespook/sts/rpc"
 	"github.com/mikespook/sts/tunnel"
 )
@@ -15,26 +15,30 @@ const (
 	RPC    = "RPC"
 )
 
-func New(cfg *Config) *Server {
-	srv := &Server{
+func New(cfg *Config) *Sts {
+	srv := &Sts{
 		config:    cfg,
 		errExit:   make(chan error),
 		errCommon: make(chan error),
-		services:  make(map[string]iface.Service),
+		services:  make(map[string]model.Service),
+		sessions:  model.NewSessions(),
+		agents:    model.NewAgents(),
 	}
 	return srv
 }
 
-type Server struct {
-	services map[string]iface.Service
-
+type Sts struct {
+	services  map[string]model.Service
 	errExit   chan error
 	errCommon chan error
 
 	config *Config
+
+	sessions *model.Sessions
+	agents   *model.Agents
 }
 
-func (srv *Server) Serve() (err error) {
+func (srv *Sts) Serve() (err error) {
 	log.Messagef("Set PWD: %s", srv.config.Pwd)
 	if err = os.Chdir(srv.config.Pwd); err != nil {
 		return
@@ -44,18 +48,18 @@ func (srv *Server) Serve() (err error) {
 	return srv.wait()
 }
 
-func (srv *Server) Close() {
+func (srv *Sts) Close() {
 	srv.close(Tunnel)
 	srv.close(RPC)
 	srv.shutdown()
 }
 
-func (srv *Server) reboot() {
+func (srv *Sts) reboot() {
 	srv.close(Tunnel)
 	go srv.start(tunnel.New, Tunnel, srv.config.Tunnel)
 }
 
-func (srv *Server) wait() (err error) {
+func (srv *Sts) wait() (err error) {
 Loop:
 	for {
 		select {
@@ -68,14 +72,14 @@ Loop:
 	return
 }
 
-func (srv *Server) shutdown() {
+func (srv *Sts) shutdown() {
 	close(srv.errExit)
 	close(srv.errCommon)
 }
 
-func (srv *Server) start(f func() iface.Service, name string, config interface{}) {
+func (srv *Sts) start(f func(model.States) model.Service, name string, config interface{}) {
 	log.Messagef("Start %s: %+v", name, config)
-	service := f()
+	service := f(srv)
 	if err := service.Config(config); err != nil {
 		srv.errExit <- fmt.Errorf("%s Start: %s", name, err)
 		return
@@ -87,7 +91,7 @@ func (srv *Server) start(f func() iface.Service, name string, config interface{}
 	srv.services[name] = service
 }
 
-func (srv *Server) close(name string) {
+func (srv *Sts) close(name string) {
 	log.Messagef("Close %s", name)
 	service, ok := srv.services[name]
 	if !ok {
@@ -96,12 +100,4 @@ func (srv *Server) close(name string) {
 	if err := service.Close(); err != nil {
 		srv.errCommon <- fmt.Errorf("%s Close: %s", name, err)
 	}
-}
-
-func (srv *Server) Ctrl() iface.Ctrl {
-	return nil
-}
-
-func (srv *Server) Stat() iface.Stat {
-	return nil
 }

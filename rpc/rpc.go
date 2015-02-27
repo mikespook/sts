@@ -7,12 +7,13 @@ import (
 	"net/rpc"
 	"net/url"
 
-	"github.com/mikespook/sts/iface"
+	"github.com/mikespook/sts/model"
 )
 
-func New() iface.Service {
+func New(states model.States) model.Service {
 	return &RPC{
 		Server: rpc.NewServer(),
+		states: states,
 	}
 }
 
@@ -21,11 +22,7 @@ type RPC struct {
 
 	config   *Config
 	listener net.Listener
-	daemon   iface.Daemon
-}
-
-func (srv *RPC) Daemon(daemon iface.Daemon) {
-	srv.daemon = daemon
+	states   model.States
 }
 
 func (srv *RPC) Config(config interface{}) (err error) {
@@ -39,10 +36,10 @@ func (srv *RPC) Config(config interface{}) (err error) {
 }
 
 func (srv *RPC) Serve() error {
-	if err := srv.RegisterName("Ctrl", &Ctrl{srv.daemon.Ctrl()}); err != nil {
+	if err := srv.RegisterName("Ctrl", &Ctrl{}); err != nil {
 		return err
 	}
-	if err := srv.RegisterName("Stat", &Stat{srv.daemon.Stat()}); err != nil {
+	if err := srv.RegisterName("Stat", &Stat{}); err != nil {
 		return err
 	}
 	u, err := url.Parse(srv.config.Addr)

@@ -1,12 +1,12 @@
 package rpc
 
 import (
-	"github.com/mikespook/sts/iface"
+	"github.com/mikespook/sts/model"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type Ctrl struct {
-	ctrl iface.Ctrl
+	ctrl model.Ctrl
 }
 
 func (ctrl *Ctrl) Restart(_, _ *struct{}) (err error) {

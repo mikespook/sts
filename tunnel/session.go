@@ -1,4 +1,4 @@
-package session
+package tunnel
 
 import (
 	"bytes"
@@ -6,29 +6,53 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"sync"
 
 	"github.com/mikespook/golib/log"
+	"github.com/mikespook/sts/model"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type session struct {
-	Id bson.ObjectId
+	id bson.ObjectId
 
-	SshConn     ssh.Conn
-	ChannelChan <-chan ssh.NewChannel
-	OOBReqChan  <-chan *ssh.Request
+	sshConn  ssh.Conn
+	channels <-chan ssh.NewChannel
+	oobReqs  <-chan *ssh.Request
+
+	states model.States
 }
 
-func (s *session) oobRequest() {
-	for req := range s.OOBReqChan {
+func newSession(conn net.Conn, config *ssh.ServerConfig, states model.States) (s *session, err error) {
+	s = &session{
+		id:     bson.NewObjectId(),
+		states: states,
+	}
+	if s.sshConn, s.channels, s.oobReqs,
+		err = ssh.NewServerConn(conn, config); err != nil {
+		if err != io.EOF {
+			return
+		}
+	}
+	return
+}
+
+func (s *session) Id() bson.ObjectId {
+	return s.id
+}
+
+func (s *session) Metadata() ssh.ConnMetadata {
+	return s.sshConn
+}
+
+func (s *session) serveOOBRequest() {
+	for req := range s.oobReqs {
 		log.Messagef("OOB Request: %+v", req)
 	}
 }
 
-func (s *session) channels() {
-	for newChan := range s.ChannelChan {
+func (s *session) serveChannels() {
+	for newChan := range s.channels {
 		ch, reqCh, err := newChan.Accept()
 		if err != nil {
 			log.Errorf("Channel: %s", err)
@@ -53,9 +77,9 @@ func (s *session) channels() {
 func (s *session) status(ch io.Writer) {
 	outputs := []string{
 		"\x1b[2J\x1b[1;1H",
-		fmt.Sprintf("Secure Tunnel Server (%s)\r\n", s.SshConn.ServerVersion()),
-		fmt.Sprintf("User: %s@%s\r\n", s.SshConn.User(),
-			s.SshConn.RemoteAddr()),
+		fmt.Sprintf("Secure Tunnel Server (%s)\r\n", s.sshConn.ServerVersion()),
+		fmt.Sprintf("User: %s@%s\r\n", s.sshConn.User(),
+			s.sshConn.RemoteAddr()),
 		"\n* Press any key to refresh status *\r\n* Press [Ctrl+C] to disconnect *\r\n",
 	}
 	for _, line := range outputs {
@@ -108,69 +132,28 @@ func (s *session) directTcpIp(newChan ssh.NewChannel,
 		log.Error(err)
 		return
 	}
-	agent, err := NewAgent(addr, ch)
+	a, err := newAgent(addr, ch)
 	if err != nil {
 		log.Error(err)
 		return
 	}
-	defer agent.Close()
-	if err := agent.Serve(); err != nil {
+	defer a.Close()
+	s.states.Agents().Add(a)
+	defer s.states.Agents().Remove(a)
+	if err := a.Serve(); err != nil {
 		log.Error(err)
 		return
 	}
 }
 
 func (s *session) Close() error {
-	return s.SshConn.Close()
-}
-
-func New(conn net.Conn, config *ssh.ServerConfig) (s *session, err error) {
-	s = &session{
-		Id: bson.NewObjectId(),
-	}
-	if s.SshConn, s.ChannelChan, s.OOBReqChan,
-		err = ssh.NewServerConn(conn, config); err != nil {
-		if err != io.EOF {
-			return
-		}
-	}
-	return
+	return s.sshConn.Close()
 }
 
 func (s *session) Serve() {
-	go s.oobRequest()
-	s.channels()
-}
-
-type Sessions struct {
-	sync.RWMutex
-	M map[bson.ObjectId]*session
-}
-
-func NewSessions() *Sessions {
-	return &Sessions{
-		M: make(map[bson.ObjectId]*session),
-	}
-}
-
-func (m *Sessions) Add(s *session) {
-	m.Lock()
-	m.M[s.Id] = s
-	m.Unlock()
-}
-
-func (m *Sessions) Remove(s *session) {
-	m.Lock()
-	delete(m.M, s.Id)
-	m.Unlock()
-}
-
-func (m *Sessions) Close() {
-	m.Lock()
-	for k, v := range m.M {
-		if err := v.Close(); err != nil {
-			log.Errorf("Session Close[%s]: %s", k.Hex(), err)
-		}
-	}
-	m.Unlock()
+	go s.serveOOBRequest()
+	log.Messagef("SSH-Connect: %s [%s@%s] (%s)", s.id.Hex(), s.sshConn.User(),
+		s.sshConn.RemoteAddr(), s.sshConn.ClientVersion())
+	s.serveChannels()
+	log.Messagef("SSH-Disconnect: %s", s.id.Hex())
 }

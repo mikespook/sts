@@ -6,16 +6,14 @@ import (
 	"net"
 
 	"github.com/mikespook/golib/log"
-	"github.com/mikespook/sts/auth"
-	"github.com/mikespook/sts/iface"
-	"github.com/mikespook/sts/session"
+	"github.com/mikespook/sts/model"
+	"github.com/mikespook/sts/tunnel/auth"
 	"golang.org/x/crypto/ssh"
 )
 
-func New() iface.Service {
+func New(states model.States) model.Service {
 	return &Tunnel{
-		sessions: session.NewSessions(),
-		agents:   session.NewAgents(),
+		states: states,
 	}
 }
 
@@ -23,10 +21,7 @@ type Tunnel struct {
 	config   *Config
 	auth     *auth.Config
 	listener net.Listener
-
-	daemon   iface.Daemon
-	sessions *session.Sessions
-	agents   *session.Agents
+	states   model.States
 }
 
 func (tun *Tunnel) sshConfig() (config *ssh.ServerConfig, err error) {
@@ -55,10 +50,6 @@ func (tun *Tunnel) sshConfig() (config *ssh.ServerConfig, err error) {
 		config.AddHostKey(privKey)
 	}
 	return
-}
-
-func (tun *Tunnel) Daemon(daemon iface.Daemon) {
-	tun.daemon = daemon
 }
 
 func (tun *Tunnel) Config(config interface{}) (err error) {
@@ -103,7 +94,7 @@ func (tun *Tunnel) Serve() (err error) {
 }
 
 func (tun *Tunnel) Close() error {
-	tun.sessions.Close()
+	//	tun.state.Close()
 	return tun.listener.Close()
 }
 
@@ -117,18 +108,13 @@ func (tun *Tunnel) session(conn net.Conn, config *ssh.ServerConfig) {
 		log.Messagef("Disconnect: %s", conn.RemoteAddr())
 	}()
 	log.Messagef("Connect: %s", conn.RemoteAddr())
-
-	s, err := session.New(conn, config)
+	s, err := newSession(conn, config, tun.states)
 	if err != nil {
 		log.Errorf("SSH-Connect: %s", err)
 		return
 	}
+	tun.states.Sessions().Add(s)
+	defer tun.states.Sessions().Remove(s)
 	defer s.Close()
-	log.Messagef("SSH-Connect: %s [%s@%s] (%s)", s.Id, s.SshConn.User(),
-		s.SshConn.RemoteAddr(), s.SshConn.ClientVersion())
-
-	tun.sessions.Add(s)
-	defer tun.sessions.Remove(s)
 	s.Serve()
-	log.Messagef("SSH-Disconnect: %s", s.Id.Hex())
 }
