@@ -6,18 +6,20 @@ import (
 )
 
 type Ctrl struct {
-	ctrl model.Ctrl
+	keeper model.Keeper
 }
 
-func (ctrl *Ctrl) Restart(_, _ *struct{}) (err error) {
-	ctrl.ctrl.Restart()
-	return
+func (ctrl *Ctrl) Restart(_, _ *struct{}) error {
+	ctrl.keeper.Restart()
+	return nil
 }
 
 func (ctrl *Ctrl) Cutoff(id bson.ObjectId, reply *struct{}) error {
-	return ctrl.ctrl.Cutoff(id)
+	ctrl.keeper.Cutoff(id)
+	return nil
 }
 
 func (ctrl *Ctrl) Kickoff(id bson.ObjectId, reply *struct{}) error {
-	return ctrl.ctrl.Kickoff(id)
+	ctrl.keeper.Kickoff(id)
+	return nil
 }

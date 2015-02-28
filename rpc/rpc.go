@@ -10,10 +10,10 @@ import (
 	"github.com/mikespook/sts/model"
 )
 
-func New(states model.States) model.Service {
+func New(keeper model.Keeper) model.Service {
 	return &RPC{
 		Server: rpc.NewServer(),
-		states: states,
+		keeper: keeper,
 	}
 }
 
@@ -22,7 +22,7 @@ type RPC struct {
 
 	config   *Config
 	listener net.Listener
-	states   model.States
+	keeper   model.Keeper
 }
 
 func (srv *RPC) Config(config interface{}) (err error) {

@@ -21,9 +21,8 @@ func New(cfg *Config) *Sts {
 		errExit:   make(chan error),
 		errCommon: make(chan error),
 		services:  make(map[string]model.Service),
-		sessions:  model.NewSessions(),
-		agents:    model.NewAgents(),
 	}
+	srv.keeper = newKeeper(srv)
 	return srv
 }
 
@@ -34,8 +33,7 @@ type Sts struct {
 
 	config *Config
 
-	sessions *model.Sessions
-	agents   *model.Agents
+	keeper *keeper
 }
 
 func (srv *Sts) Serve() (err error) {
@@ -54,7 +52,7 @@ func (srv *Sts) Close() {
 	srv.shutdown()
 }
 
-func (srv *Sts) reboot() {
+func (srv *Sts) restart() {
 	srv.close(Tunnel)
 	go srv.start(tunnel.New, Tunnel, srv.config.Tunnel)
 }
@@ -77,9 +75,9 @@ func (srv *Sts) shutdown() {
 	close(srv.errCommon)
 }
 
-func (srv *Sts) start(f func(model.States) model.Service, name string, config interface{}) {
+func (srv *Sts) start(f func(model.Keeper) model.Service, name string, config interface{}) {
 	log.Messagef("Start %s: %+v", name, config)
-	service := f(srv)
+	service := f(srv.keeper)
 	if err := service.Config(config); err != nil {
 		srv.errExit <- fmt.Errorf("%s Start: %s", name, err)
 		return

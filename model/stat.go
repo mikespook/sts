@@ -8,11 +8,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type States interface {
-	Sessions() *Sessions
-	Agents() *Agents
-}
-
 type Sessions struct {
 	sync.RWMutex
 	M map[bson.ObjectId]Session
@@ -20,7 +15,7 @@ type Sessions struct {
 
 type Session interface {
 	Id() bson.ObjectId
-	Metadata() ssh.ConnMetadata
+	ssh.ConnMetadata
 	Close() error
 }
 
@@ -49,6 +44,8 @@ type Agents struct {
 
 type Agent interface {
 	Id() bson.ObjectId
+	User() string
+	SessionId() bson.ObjectId
 	LocalAddr() net.Addr
 	RemoteAddr() net.Addr
 	Close() error
@@ -69,5 +66,31 @@ func (m *Agents) Add(a Agent) {
 func (m *Agents) Remove(a Agent) {
 	m.Lock()
 	delete(m.M, a.Id())
+	m.Unlock()
+}
+
+type Users struct {
+	sync.RWMutex
+	M map[string]map[bson.ObjectId]struct{}
+}
+
+func NewUsers() *Users {
+	return &Users{
+		M: make(map[string]map[bson.ObjectId]struct{}),
+	}
+}
+
+func (m *Users) Add(user string, sid bson.ObjectId) {
+	m.Lock()
+	if _, ok := m.M[user]; !ok {
+		m.M[user] = make(map[bson.ObjectId]struct{})
+	}
+	m.M[user][sid] = struct{}{}
+	m.Unlock()
+}
+
+func (m *Users) Remove(user string, sid bson.ObjectId) {
+	m.Lock()
+	delete(m.M[user], sid)
 	m.Unlock()
 }

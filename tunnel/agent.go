@@ -12,10 +12,20 @@ type agent struct {
 	id bson.ObjectId
 	ch ssh.Channel
 	net.Conn
+
+	session *session
 }
 
 func (a *agent) Id() bson.ObjectId {
 	return a.id
+}
+
+func (a *agent) SessionId() bson.ObjectId {
+	return a.session.id
+}
+
+func (a *agent) User() string {
+	return a.session.User()
 }
 
 func (a *agent) Serve() error {

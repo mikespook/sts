@@ -11,9 +11,9 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func New(states model.States) model.Service {
+func New(keeper model.Keeper) model.Service {
 	return &Tunnel{
-		states: states,
+		keeper: keeper,
 	}
 }
 
@@ -21,7 +21,7 @@ type Tunnel struct {
 	config   *Config
 	auth     *auth.Config
 	listener net.Listener
-	states   model.States
+	keeper   model.Keeper
 }
 
 func (tun *Tunnel) sshConfig() (config *ssh.ServerConfig, err error) {
@@ -108,13 +108,13 @@ func (tun *Tunnel) session(conn net.Conn, config *ssh.ServerConfig) {
 		log.Messagef("Disconnect: %s", conn.RemoteAddr())
 	}()
 	log.Messagef("Connect: %s", conn.RemoteAddr())
-	s, err := newSession(conn, config, tun.states)
+	s, err := newSession(conn, config)
 	if err != nil {
 		log.Errorf("SSH-Connect: %s", err)
 		return
 	}
-	tun.states.Sessions().Add(s)
-	defer tun.states.Sessions().Remove(s)
-	defer s.Close()
+	s.keeper = tun.keeper
+	tun.keeper.AddSession(s)
+	defer tun.keeper.RemoveSession(s)
 	s.Serve()
 }

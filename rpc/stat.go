@@ -15,7 +15,7 @@ const (
 )
 
 type Stat struct {
-	states model.States
+	keeper model.Keeper
 }
 
 func (stat *Stat) User(id *bson.ObjectId, reply *struct{}) error {
