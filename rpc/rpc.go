@@ -6,11 +6,12 @@ import (
 	"net/http"
 	"net/rpc"
 	"net/url"
+	"time"
 
-	"github.com/mikespook/sts/model"
+	"github.com/mikespook/sts/iface"
 )
 
-func New(keeper model.Keeper) model.Service {
+func New(keeper iface.Keeper) iface.Service {
 	return &RPC{
 		Server: rpc.NewServer(),
 		keeper: keeper,
@@ -22,7 +23,12 @@ type RPC struct {
 
 	config   *Config
 	listener net.Listener
-	keeper   model.Keeper
+	keeper   iface.Keeper
+	etime    time.Time
+}
+
+func (srv *RPC) ETime() time.Time {
+	return srv.etime
 }
 
 func (srv *RPC) Config(config interface{}) (err error) {
@@ -36,10 +42,11 @@ func (srv *RPC) Config(config interface{}) (err error) {
 }
 
 func (srv *RPC) Serve() error {
-	if err := srv.RegisterName("Ctrl", &Ctrl{}); err != nil {
+	srv.etime = time.Now()
+	if err := srv.RegisterName("Ctrl", &rpcCtrl{srv.keeper}); err != nil {
 		return err
 	}
-	if err := srv.RegisterName("Stat", &Stat{}); err != nil {
+	if err := srv.RegisterName("Stat", &rpcStat{srv.keeper}); err != nil {
 		return err
 	}
 	u, err := url.Parse(srv.config.Addr)
@@ -67,8 +74,4 @@ func (srv *RPC) Serve() error {
 
 func (srv *RPC) Close() error {
 	return srv.listener.Close()
-}
-
-func (srv *RPC) Restart() error {
-	return nil
 }

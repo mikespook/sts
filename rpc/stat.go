@@ -1,9 +1,7 @@
 package rpc
 
 import (
-	"sync"
-	"time"
-
+	"github.com/mikespook/sts/iface"
 	"github.com/mikespook/sts/model"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -14,48 +12,78 @@ const (
 	StatusWritten = "WRITTEN"
 )
 
-type Stat struct {
-	keeper model.Keeper
+type rpcStat struct {
+	keeper iface.Keeper
 }
 
-func (stat *Stat) User(id *bson.ObjectId, reply *struct{}) error {
-	return nil
-}
-
-func (stat *Stat) Conn(id bson.ObjectId, reply *struct{}) error {
-	return nil
-}
-
-func (stat *Stat) Server(_, reply *struct{}) error {
-	return nil
-}
-
-type Status struct {
-	sync.RWMutex
-	start time.Time
-	data  map[string]uint64
-}
-
-func NewStatus() *Status {
-	return &Status{
-		start: time.Now(),
-		data:  make(map[string]uint64),
+func sessionConv(i iface.Session, m *model.Session) {
+	ia := i.Agents()
+	m.Agents = make(map[bson.ObjectId]*model.Agent)
+	for k, v := range ia {
+		var ma model.Agent
+		agentConv(v, &ma)
+		m.Agents[k] = &ma
 	}
+	m.ETime = i.ETime()
+	m.ClientVersion = i.ClientVersion()
+	m.Id = i.Id()
+	m.LocalAddr = i.LocalAddr().String()
+	m.RemoteAddr = i.RemoteAddr().String()
+	m.ServerVersion = i.ServerVersion()
+	m.User = i.User()
 }
 
-func (status *Status) Established() time.Duration {
-	return time.Now().Sub(status.start)
+func agentConv(i iface.Agent, m *model.Agent) {
+	m.ETime = i.ETime()
+	m.Id = i.Id()
+	m.LocalAddr = i.LocalAddr().String()
+	m.RemoteAddr = i.RemoteAddr().String()
+	m.SessionId = i.SessionId()
+	m.User = i.User()
 }
 
-func (status *Status) Inc(t string, delta uint64) uint64 {
-	status.Lock()
-	defer status.Unlock()
-	status.data[t] += delta
-	return status.data[t]
+func (stat *rpcStat) Sessions(user string, s *model.Sessions) error {
+	s.M = make(map[bson.ObjectId]*model.Session)
+	i := stat.keeper.Sessions()
+	for k, v := range i {
+		if user == "" || v.User() == user {
+			var m model.Session
+			sessionConv(v, &m)
+			s.M[k] = &m
+		}
+	}
+	return nil
 }
 
-func (status *Status) Value(t string) uint64 {
-	status.RLock()
-	defer status.RUnlock()
-	return status.data[t]
+func (stat *rpcStat) Agents(user string, a *model.Agents) error {
+	a.M = make(map[bson.ObjectId]*model.Agent)
+	i := stat.keeper.Agents()
+	for k, v := range i {
+		if user == "" || v.User() == user {
+			var m model.Agent
+			agentConv(v, &m)
+			a.M[k] = &m
+		}
+	}
+	return nil
+}
+
+func (stat *rpcStat) Session(id bson.ObjectId, s *model.Session) error {
+	i := stat.keeper.Session(id)
+	sessionConv(i, s)
+	return nil
+}
+
+func (stat *rpcStat) Agent(id bson.ObjectId, a *model.Agent) error {
+	i := stat.keeper.Agent(id)
+	agentConv(i, a)
+	return nil
+}
+
+func (stat *rpcStat) Stat(_, s *model.Stat) error {
+	innerStat := stat.keeper.Stat()
+	s.ETime = innerStat.ETime()
+	s.Sessions = innerStat.Aggregate(model.StatSession)
+	s.Agents = innerStat.Aggregate(model.StatAgent)
+	return nil
 }

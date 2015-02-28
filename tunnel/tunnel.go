@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"time"
 
 	"github.com/mikespook/golib/log"
-	"github.com/mikespook/sts/model"
+	"github.com/mikespook/sts/iface"
 	"github.com/mikespook/sts/tunnel/auth"
 	"golang.org/x/crypto/ssh"
 )
 
-func New(keeper model.Keeper) model.Service {
+func New(keeper iface.Keeper) iface.Service {
 	return &Tunnel{
 		keeper: keeper,
 	}
@@ -21,7 +22,12 @@ type Tunnel struct {
 	config   *Config
 	auth     *auth.Config
 	listener net.Listener
-	keeper   model.Keeper
+	keeper   iface.Keeper
+	etime    time.Time
+}
+
+func (tun *Tunnel) ETime() time.Time {
+	return tun.etime
 }
 
 func (tun *Tunnel) sshConfig() (config *ssh.ServerConfig, err error) {
@@ -64,6 +70,7 @@ func (tun *Tunnel) Config(config interface{}) (err error) {
 }
 
 func (tun *Tunnel) Serve() (err error) {
+	tun.etime = time.Now()
 	tun.listener, err = net.Listen("tcp", tun.config.Addr)
 	if err != nil {
 		return
@@ -94,12 +101,7 @@ func (tun *Tunnel) Serve() (err error) {
 }
 
 func (tun *Tunnel) Close() error {
-	//	tun.state.Close()
 	return tun.listener.Close()
-}
-
-func (tun *Tunnel) Restart() error {
-	return nil
 }
 
 func (tun *Tunnel) session(conn net.Conn, config *ssh.ServerConfig) {

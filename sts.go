@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/mikespook/golib/log"
-	"github.com/mikespook/sts/model"
+	"github.com/mikespook/sts/iface"
 	"github.com/mikespook/sts/rpc"
 	"github.com/mikespook/sts/tunnel"
 )
@@ -20,14 +20,14 @@ func New(cfg *Config) *Sts {
 		config:    cfg,
 		errExit:   make(chan error),
 		errCommon: make(chan error),
-		services:  make(map[string]model.Service),
+		services:  make(map[string]iface.Service),
 	}
 	srv.keeper = newKeeper(srv)
 	return srv
 }
 
 type Sts struct {
-	services  map[string]model.Service
+	services  map[string]iface.Service
 	errExit   chan error
 	errCommon chan error
 
@@ -75,7 +75,7 @@ func (srv *Sts) shutdown() {
 	close(srv.errCommon)
 }
 
-func (srv *Sts) start(f func(model.Keeper) model.Service, name string, config interface{}) {
+func (srv *Sts) start(f func(iface.Keeper) iface.Service, name string, config interface{}) {
 	log.Messagef("Start %s: %+v", name, config)
 	service := f(srv.keeper)
 	if err := service.Config(config); err != nil {

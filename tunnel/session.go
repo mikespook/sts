@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"time"
 
 	"github.com/mikespook/golib/log"
-	"github.com/mikespook/sts/model"
+	"github.com/mikespook/sts/iface"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -20,7 +21,8 @@ type session struct {
 	channels <-chan ssh.NewChannel
 	oobReqs  <-chan *ssh.Request
 
-	keeper model.Keeper
+	keeper iface.Keeper
+	etime  time.Time
 }
 
 func newSession(conn net.Conn, config *ssh.ServerConfig) (s *session, err error) {
@@ -34,6 +36,10 @@ func newSession(conn net.Conn, config *ssh.ServerConfig) (s *session, err error)
 		}
 	}
 	return
+}
+
+func (s *session) ETime() time.Time {
+	return s.etime
 }
 
 func (s *session) Id() bson.ObjectId {
@@ -122,6 +128,7 @@ func parseAddr(data []byte) (addr string, err error) {
 
 func (s *session) directTcpIp(newChan ssh.NewChannel,
 	ch ssh.Channel) {
+	defer ch.Close()
 	addr, err := parseAddr(newChan.ExtraData())
 	if err != nil {
 		log.Error(err)
@@ -146,7 +153,19 @@ func (s *session) Close() error {
 	return s.Conn.Close()
 }
 
+func (s *session) Agents() map[bson.ObjectId]iface.Agent {
+	agents := make(map[bson.ObjectId]iface.Agent)
+	all := s.keeper.Agents()
+	for k, v := range all {
+		if v.User() == s.User() {
+			agents[k] = v
+		}
+	}
+	return agents
+}
+
 func (s *session) Serve() {
+	s.etime = time.Now()
 	go s.serveOOBRequest()
 	log.Messagef("SSH-Connect: %s [%s@%s] (%s)", s.id.Hex(), s.User(),
 		s.RemoteAddr(), s.ClientVersion())

@@ -3,6 +3,7 @@ package tunnel
 import (
 	"io"
 	"net"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/mgo.v2/bson"
@@ -14,6 +15,7 @@ type agent struct {
 	net.Conn
 
 	session *session
+	etime   time.Time
 }
 
 func (a *agent) Id() bson.ObjectId {
@@ -29,7 +31,7 @@ func (a *agent) User() string {
 }
 
 func (a *agent) Serve() error {
-	defer a.ch.Close()
+	a.etime = time.Now()
 	go io.Copy(a.Conn, a.ch)
 	_, err := io.Copy(a.ch, a.Conn)
 	return err
@@ -37,6 +39,10 @@ func (a *agent) Serve() error {
 
 func (a *agent) Close() error {
 	return a.Conn.Close()
+}
+
+func (a *agent) ETime() time.Time {
+	return a.etime
 }
 
 func newAgent(addr string, ch ssh.Channel) (*agent, error) {
