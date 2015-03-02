@@ -157,7 +157,7 @@ func (s *session) Agents() map[bson.ObjectId]iface.Agent {
 	agents := make(map[bson.ObjectId]iface.Agent)
 	all := s.bus.Agents()
 	for k, v := range all {
-		if v.User() == s.User() {
+		if v.SessionId() == s.id {
 			agents[k] = v
 		}
 	}

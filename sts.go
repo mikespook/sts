@@ -82,11 +82,11 @@ func (srv *Sts) start(f func(iface.Bus) iface.Service, name string, config inter
 		srv.errExit <- fmt.Errorf("%s Start: %s", name, err)
 		return
 	}
+	srv.services[name] = service
 	if err := service.Serve(); err != nil {
 		srv.errExit <- fmt.Errorf("%s Serve: %s", name, err)
 		return
 	}
-	srv.services[name] = service
 }
 
 func (srv *Sts) close(name string) {

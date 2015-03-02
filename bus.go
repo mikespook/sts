@@ -2,7 +2,6 @@ package sts
 
 import (
 	"time"
-
 	"github.com/mikespook/sts/iface"
 	"github.com/mikespook/sts/model"
 	"gopkg.in/mgo.v2/bson"

@@ -1,6 +1,8 @@
 package rpc
 
 import (
+	"fmt"
+
 	"github.com/mikespook/sts/iface"
 	"github.com/mikespook/sts/model"
 	"gopkg.in/mgo.v2/bson"
@@ -68,22 +70,28 @@ func (stat *rpcStat) Agents(user string, a *model.Agents) error {
 	return nil
 }
 
-func (stat *rpcStat) Stat(_ interface{}, s *model.Stat) error {
+func (stat *rpcStat) Stat(_ struct{}, s *model.Stat) error {
 	i := stat.bus.Stat()
 	s.Sessions = i.Aggregate(model.StatSession)
-	s.Agents = i.Aggregate(model.StatSession)
+	s.Agents = i.Aggregate(model.StatAgent)
 	s.ETime = i.ETime()
 	return nil
 }
 
 func (stat *rpcStat) Session(id bson.ObjectId, s *model.Session) error {
 	i := stat.bus.Session(id)
+	if i == nil {
+		return fmt.Errorf("Session %s not found", id.Hex())
+	}
 	sessionConv(i, s)
 	return nil
 }
 
 func (stat *rpcStat) Agent(id bson.ObjectId, a *model.Agent) error {
 	i := stat.bus.Agent(id)
+	if i == nil {
+		return fmt.Errorf("Agent %s not found", id.Hex())
+	}
 	agentConv(i, a)
 	return nil
 }
