@@ -22,7 +22,7 @@ func New(cfg *Config) *Sts {
 		errCommon: make(chan error),
 		services:  make(map[string]iface.Service),
 	}
-	srv.keeper = newKeeper(srv)
+	srv.bus = newBus(srv)
 	return srv
 }
 
@@ -33,7 +33,7 @@ type Sts struct {
 
 	config *Config
 
-	keeper *keeper
+	bus iface.Bus
 }
 
 func (srv *Sts) Serve() (err error) {
@@ -75,9 +75,9 @@ func (srv *Sts) shutdown() {
 	close(srv.errCommon)
 }
 
-func (srv *Sts) start(f func(iface.Keeper) iface.Service, name string, config interface{}) {
+func (srv *Sts) start(f func(iface.Bus) iface.Service, name string, config interface{}) {
 	log.Messagef("Start %s: %+v", name, config)
-	service := f(srv.keeper)
+	service := f(srv.bus)
 	if err := service.Config(config); err != nil {
 		srv.errExit <- fmt.Errorf("%s Start: %s", name, err)
 		return

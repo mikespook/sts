@@ -13,7 +13,7 @@ const (
 )
 
 type rpcStat struct {
-	keeper iface.Keeper
+	bus iface.Bus
 }
 
 func sessionConv(i iface.Session, m *model.Session) {
@@ -44,7 +44,7 @@ func agentConv(i iface.Agent, m *model.Agent) {
 
 func (stat *rpcStat) Sessions(user string, s *model.Sessions) error {
 	s.M = make(map[bson.ObjectId]*model.Session)
-	i := stat.keeper.Sessions()
+	i := stat.bus.Sessions()
 	for k, v := range i {
 		if user == "" || v.User() == user {
 			var m model.Session
@@ -57,7 +57,7 @@ func (stat *rpcStat) Sessions(user string, s *model.Sessions) error {
 
 func (stat *rpcStat) Agents(user string, a *model.Agents) error {
 	a.M = make(map[bson.ObjectId]*model.Agent)
-	i := stat.keeper.Agents()
+	i := stat.bus.Agents()
 	for k, v := range i {
 		if user == "" || v.User() == user {
 			var m model.Agent
@@ -68,22 +68,22 @@ func (stat *rpcStat) Agents(user string, a *model.Agents) error {
 	return nil
 }
 
+func (stat *rpcStat) Stat(_ interface{}, s *model.Stat) error {
+	i := stat.bus.Stat()
+	s.Sessions = i.Aggregate(model.StatSession)
+	s.Agents = i.Aggregate(model.StatSession)
+	s.ETime = i.ETime()
+	return nil
+}
+
 func (stat *rpcStat) Session(id bson.ObjectId, s *model.Session) error {
-	i := stat.keeper.Session(id)
+	i := stat.bus.Session(id)
 	sessionConv(i, s)
 	return nil
 }
 
 func (stat *rpcStat) Agent(id bson.ObjectId, a *model.Agent) error {
-	i := stat.keeper.Agent(id)
+	i := stat.bus.Agent(id)
 	agentConv(i, a)
-	return nil
-}
-
-func (stat *rpcStat) Stat(_, s *model.Stat) error {
-	innerStat := stat.keeper.Stat()
-	s.ETime = innerStat.ETime()
-	s.Sessions = innerStat.Aggregate(model.StatSession)
-	s.Agents = innerStat.Aggregate(model.StatAgent)
 	return nil
 }

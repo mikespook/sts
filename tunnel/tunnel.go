@@ -12,9 +12,9 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func New(keeper iface.Keeper) iface.Service {
+func New(bus iface.Bus) iface.Service {
 	return &Tunnel{
-		keeper: keeper,
+		bus: bus,
 	}
 }
 
@@ -22,7 +22,7 @@ type Tunnel struct {
 	config   *Config
 	auth     *auth.Config
 	listener net.Listener
-	keeper   iface.Keeper
+	bus      iface.Bus
 	etime    time.Time
 }
 
@@ -115,8 +115,8 @@ func (tun *Tunnel) session(conn net.Conn, config *ssh.ServerConfig) {
 		log.Errorf("SSH-Connect: %s", err)
 		return
 	}
-	s.keeper = tun.keeper
-	tun.keeper.AddSession(s)
-	defer tun.keeper.RemoveSession(s)
+	s.bus = tun.bus
+	tun.bus.AddSession(s)
+	defer tun.bus.RemoveSession(s)
 	s.Serve()
 }

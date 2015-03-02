@@ -6,20 +6,20 @@ import (
 )
 
 type rpcCtrl struct {
-	keeper iface.Keeper
+	bus iface.Bus
 }
 
 func (ctrl *rpcCtrl) Restart(_, _ *struct{}) error {
-	ctrl.keeper.Restart()
+	ctrl.bus.Restart()
 	return nil
 }
 
 func (ctrl *rpcCtrl) Cutoff(id bson.ObjectId, _ *struct{}) error {
-	ctrl.keeper.Cutoff(id)
+	ctrl.bus.Cutoff(id)
 	return nil
 }
 
 func (ctrl *rpcCtrl) Kickoff(id bson.ObjectId, _ *struct{}) error {
-	ctrl.keeper.Kickoff(id)
+	ctrl.bus.Kickoff(id)
 	return nil
 }

@@ -11,10 +11,10 @@ import (
 	"github.com/mikespook/sts/iface"
 )
 
-func New(keeper iface.Keeper) iface.Service {
+func New(bus iface.Bus) iface.Service {
 	return &RPC{
 		Server: rpc.NewServer(),
-		keeper: keeper,
+		bus:    bus,
 	}
 }
 
@@ -23,7 +23,7 @@ type RPC struct {
 
 	config   *Config
 	listener net.Listener
-	keeper   iface.Keeper
+	bus      iface.Bus
 	etime    time.Time
 }
 
@@ -43,10 +43,10 @@ func (srv *RPC) Config(config interface{}) (err error) {
 
 func (srv *RPC) Serve() error {
 	srv.etime = time.Now()
-	if err := srv.RegisterName("Ctrl", &rpcCtrl{srv.keeper}); err != nil {
+	if err := srv.RegisterName("Ctrl", &rpcCtrl{srv.bus}); err != nil {
 		return err
 	}
-	if err := srv.RegisterName("Stat", &rpcStat{srv.keeper}); err != nil {
+	if err := srv.RegisterName("Stat", &rpcStat{srv.bus}); err != nil {
 		return err
 	}
 	u, err := url.Parse(srv.config.Addr)

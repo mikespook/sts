@@ -21,8 +21,8 @@ type session struct {
 	channels <-chan ssh.NewChannel
 	oobReqs  <-chan *ssh.Request
 
-	keeper iface.Keeper
-	etime  time.Time
+	bus   iface.Bus
+	etime time.Time
 }
 
 func newSession(conn net.Conn, config *ssh.ServerConfig) (s *session, err error) {
@@ -141,8 +141,8 @@ func (s *session) directTcpIp(newChan ssh.NewChannel,
 	}
 	a.session = s
 	defer a.Close()
-	s.keeper.AddAgent(a)
-	defer s.keeper.RemoveAgent(a)
+	s.bus.AddAgent(a)
+	defer s.bus.RemoveAgent(a)
 	if err := a.Serve(); err != nil {
 		log.Error(err)
 		return
@@ -155,7 +155,7 @@ func (s *session) Close() error {
 
 func (s *session) Agents() map[bson.ObjectId]iface.Agent {
 	agents := make(map[bson.ObjectId]iface.Agent)
-	all := s.keeper.Agents()
+	all := s.bus.Agents()
 	for k, v := range all {
 		if v.User() == s.User() {
 			agents[k] = v
