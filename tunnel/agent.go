@@ -16,7 +16,6 @@ type agent struct {
 
 	session *session
 	etime   time.Time
-	errExit chan error
 }
 
 func (a *agent) Id() bson.ObjectId {
@@ -32,23 +31,27 @@ func (a *agent) User() string {
 }
 
 func (a *agent) Serve() (err error) {
+	errExit1 := make(chan error, 1)
+	errExit2 := make(chan error, 1)
 	a.etime = time.Now()
 	go func() {
 		_, err := io.Copy(a.Conn, a.ch)
-		a.errExit <- err
+		errExit1 <- err
+		defer close(errExit1)
 	}()
-	go func() {
+	func() {
 		_, err := io.Copy(a.ch, a.Conn)
-		a.errExit <- err
+		errExit2 <- err
+		defer close(errExit2)
 	}()
-	for err = range a.errExit {
-		break
+	select {
+	case err = <-errExit1:
+	case err = <-errExit2:
 	}
 	return err
 }
 
 func (a *agent) Close() error {
-	close(a.errExit)
 	return a.Conn.Close()
 }
 
@@ -62,9 +65,8 @@ func newAgent(addr string, ch ssh.Channel) (*agent, error) {
 		return nil, err
 	}
 	return &agent{
-		id:      bson.NewObjectId(),
-		Conn:    conn,
-		ch:      ch,
-		errExit: make(chan error),
+		id:   bson.NewObjectId(),
+		Conn: conn,
+		ch:   ch,
 	}, nil
 }

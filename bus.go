@@ -2,6 +2,7 @@ package sts
 
 import (
 	"time"
+
 	"github.com/mikespook/sts/iface"
 	"github.com/mikespook/sts/model"
 	"gopkg.in/mgo.v2/bson"
@@ -64,15 +65,19 @@ func (k *bus) Restart() {
 
 func (k *bus) Cutoff(id bson.ObjectId) {
 	k.agents.Lock()
-	k.agents.M[id].Close()
-	delete(k.agents.M, id)
+	if a, ok := k.agents.M[id]; ok {
+		a.Close()
+		delete(k.agents.M, id)
+	}
 	k.agents.Unlock()
 }
 
 func (k *bus) Kickoff(id bson.ObjectId) {
 	k.sessions.Lock()
-	k.sessions.M[id].Close()
-	delete(k.sessions.M, id)
+	if s, ok := k.sessions.M[id]; ok {
+		s.Close()
+		delete(k.sessions.M, id)
+	}
 	k.sessions.Unlock()
 }
 

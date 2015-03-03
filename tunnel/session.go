@@ -96,7 +96,9 @@ LOOP:
 	for {
 		s.status(ch)
 		if _, err := ch.Read(buf); err != nil {
-			log.Errorf("Read: %s", err)
+			if err != io.EOF {
+				log.Errorf("Read: %s", err)
+			}
 			return
 		}
 		switch buf[0] {
@@ -144,7 +146,6 @@ func (s *session) directTcpIp(newChan ssh.NewChannel,
 	s.bus.AddAgent(a)
 	defer s.bus.RemoveAgent(a)
 	if err := a.Serve(); err != nil {
-		log.Error(err)
 		return
 	}
 }

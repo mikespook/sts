@@ -9,7 +9,7 @@ type rpcCtrl struct {
 	bus iface.Bus
 }
 
-func (ctrl *rpcCtrl) Restart(_ interface{}, _ *struct{}) error {
+func (ctrl *rpcCtrl) Restart(_ struct{}, _ *struct{}) error {
 	ctrl.bus.Restart()
 	return nil
 }

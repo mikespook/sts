@@ -54,7 +54,7 @@ func (srv *Sts) Close() {
 
 func (srv *Sts) restart() {
 	srv.close(Tunnel)
-	go srv.start(tunnel.New, Tunnel, srv.config.Tunnel)
+	go srv.start(tunnel.New, Tunnel, &srv.config.Tunnel)
 }
 
 func (srv *Sts) wait() (err error) {
@@ -95,7 +95,8 @@ func (srv *Sts) close(name string) {
 	if !ok {
 		return
 	}
+	delete(srv.services, name)
 	if err := service.Close(); err != nil {
-		srv.errCommon <- fmt.Errorf("%s Close: %s", name, err)
+		srv.errExit <- fmt.Errorf("%s Close: %s", name, err)
 	}
 }
