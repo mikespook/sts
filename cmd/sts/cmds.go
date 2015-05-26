@@ -11,8 +11,10 @@ import (
 	"github.com/peterh/liner"
 )
 
+type cmdFunc func(*rpc.Client, *liner.State, []string) error
+
 var (
-	cmds = map[string]func(*rpc.Client, *liner.State, []string) error{
+	cmds = map[string]cmdFunc{
 		"sessions": sessions,
 		"agents":   agents,
 		"stat":     stat,
@@ -21,9 +23,34 @@ var (
 		"restart":  restart,
 		"cutoff":   cutoff,
 		"kickoff":  kickoff,
+		"?":        help,
+		"help":     help,
 	}
-	cmdNames = []string{"session", "sessions", "stat", "agent", "agents", "restart", "cutoff", "kickoff"}
+	cmdNames = []string{"session", "sessions", "stat", "agent", "agents", "restart", "cutoff", "kickoff", "help/?"}
 )
+
+func help(client *rpc.Client, line *liner.State, argv []string) error {
+	if len(argv) == 0 {
+		fmt.Println("Following commands can be used:")
+		for _, v := range cmdNames {
+			fmt.Printf("\t%s\n", v)
+		}
+		return nil
+	}
+	switch argv[0] {
+	case "session":
+		fmt.Println("Display the detail information of a session.\nUsage: session [session-id]")
+	case "agent":
+		fmt.Println("Display the detail information of a agent.\nUsage: agent [agent-id]")
+	case "cutoff":
+		fmt.Println("Cut off an agent connection.\nUsage: cutoff [agent-id]")
+	case "kickoff":
+		fmt.Println("Kick of a session.\nUsage: kickoff [session-id]")
+	default:
+		fmt.Printf("Usage: %s\n", argv[0])
+	}
+	return nil
+}
 
 func sessions(client *rpc.Client, line *liner.State, argv []string) error {
 	var m model.Sessions
@@ -64,7 +91,6 @@ func session(client *rpc.Client, line *liner.State, argv []string) error {
 		fmt.Println("session [id]")
 		return nil
 	}
-	fmt.Printf("[%s]\n", argv[0])
 	if !bson.IsObjectIdHex(argv[0]) {
 		fmt.Println("session [id]")
 		return nil

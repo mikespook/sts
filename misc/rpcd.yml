@@ -5,4 +5,4 @@ log:
 mongo:
     addr: 127.0.0.1
     db: sts	
-pwd: ../misc
+pwd: ../../misc

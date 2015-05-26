@@ -22,7 +22,7 @@ var (
 )
 
 func init() {
-	flag.StringVar(&addr, "addr", "", "PRC address of STS")
+	flag.StringVar(&addr, "addr", "127.0.0.1:2223", "PRC address of STS")
 	flag.Parse()
 }
 
@@ -31,7 +31,7 @@ func main() {
 	defer line.Close()
 
 	line.SetCompleter(func(line string) (c []string) {
-		for _, n := range cmdNames {
+		for n, _ := range cmds {
 			if strings.HasPrefix(n, strings.ToLower(line)) {
 				c = append(c, n)
 			}
@@ -76,8 +76,7 @@ func main() {
 			cmd = argv[0]
 			if f, ok := cmds[cmd]; ok {
 				if err := f(client, line, argv[1:]); err != nil {
-					log.Error(err)
-					return
+					fmt.Printf("Error: %s\n", err)
 				}
 			} else if cmd != "" {
 				fmt.Printf("%s: command not found\n", cmd)

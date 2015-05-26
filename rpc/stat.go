@@ -3,6 +3,7 @@ package rpc
 import (
 	"fmt"
 
+	"github.com/mikespook/golib/log"
 	"github.com/mikespook/sts/iface"
 	"github.com/mikespook/sts/model"
 	"gopkg.in/mgo.v2/bson"
@@ -45,6 +46,7 @@ func agentConv(i iface.Agent, m *model.Agent) {
 }
 
 func (stat *rpcStat) Sessions(user string, s *model.Sessions) error {
+	log.Message("RPC: Sessions list")
 	s.M = make(map[bson.ObjectId]*model.Session)
 	i := stat.bus.Sessions()
 	for k, v := range i {
@@ -58,6 +60,7 @@ func (stat *rpcStat) Sessions(user string, s *model.Sessions) error {
 }
 
 func (stat *rpcStat) Agents(user string, a *model.Agents) error {
+	log.Message("RPC: Agents list")
 	a.M = make(map[bson.ObjectId]*model.Agent)
 	i := stat.bus.Agents()
 	for k, v := range i {
@@ -71,6 +74,7 @@ func (stat *rpcStat) Agents(user string, a *model.Agents) error {
 }
 
 func (stat *rpcStat) Stat(_ struct{}, s *model.Stat) error {
+	log.Message("RPC: Service status")
 	i := stat.bus.Stat()
 	s.Sessions = i.Aggregate(model.StatSession)
 	s.Agents = i.Aggregate(model.StatAgent)
@@ -79,6 +83,7 @@ func (stat *rpcStat) Stat(_ struct{}, s *model.Stat) error {
 }
 
 func (stat *rpcStat) Session(id bson.ObjectId, s *model.Session) error {
+	log.Messagef("RPC: Status of session %s", id.Hex())
 	i := stat.bus.Session(id)
 	if i == nil {
 		return fmt.Errorf("Session %s not found", id.Hex())
@@ -88,6 +93,7 @@ func (stat *rpcStat) Session(id bson.ObjectId, s *model.Session) error {
 }
 
 func (stat *rpcStat) Agent(id bson.ObjectId, a *model.Agent) error {
+	log.Messagef("RPC: Status of Agent %s", id.Hex())
 	i := stat.bus.Agent(id)
 	if i == nil {
 		return fmt.Errorf("Agent %s not found", id.Hex())

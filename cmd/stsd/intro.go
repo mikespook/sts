@@ -12,26 +12,33 @@ CONFIGURATION
 
 	Here is an example:
 
----------Example Start----------
+--------- Start ----------
 
-addr: 127.0.0.1:2222
-auth:
-	anonymous: false
-	password: static://123456
-	pubkey: file://id_rsa.pub
-keys: [ id_rsa ]
+
 log:
-	file:
-	level: all
-pwd: ../misc
+    file:
+    level: all
+pwd: ../../misc
+rpc:
+    addr: 127.0.0.1:2223
+tunnel:
+    addr: 127.0.0.1:2222
+    auth:
+        anonymous: false
+        password: static://123456
+        # password: rpc://127.0.0.1:9000
+        pubkey: file://id_rsa.pub
+        # pubkey: rpc://127.0.0.1:9000
+    keys: [ id_rsa ]
 
-----------Example End-----------
+---------- End -----------
 
-	* addr: "stsd" will bind to this address (and port)
-	* auth: See "AUTHORIZATION" for more details
-	* keys: Private keys used by server
+	* tunnel-addr: "stsd" will bind to this address (and port)
+	* tunnel-auth: See "AUTHORIZATION" for more details
+	* tunnel-keys: Private keys used by server
 	* log: Log configuration
 	* pwd: Current working directory
+	* rpc-addr: "stsd" will bind a RPC service to this address (and port)
 
 AUTHORIZATION
 

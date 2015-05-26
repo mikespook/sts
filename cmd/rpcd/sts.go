@@ -6,8 +6,8 @@ import (
 	"net/rpc"
 	"net/url"
 
-	"github.com/mikespook/sts/auth"
 	"github.com/mikespook/sts/model"
+	"github.com/mikespook/sts/tunnel/auth"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/mgo.v2"
 )
